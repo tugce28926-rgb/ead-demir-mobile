@@ -25,7 +25,7 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Force SDK 34 on All Android Plugins
+      - name: Force SDK 34 and minSdk 23
         run: |
           flutter create --platforms=android --org=com.eaddemir --project-name=ead_mobile_app .
           cat << 'EOF' >> android/build.gradle
@@ -37,7 +37,7 @@ jobs:
                           compileSdkVersion 34
                           if (project.android.hasProperty('defaultConfig')) {
                               project.android.defaultConfig {
-                                  minSdkVersion 21
+                                  minSdkVersion 23
                                   targetSdkVersion 34
                               }
                           }
@@ -51,7 +51,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Release APK
-        run: flutter build apk --release --no-tree-shake-icons
+        run: flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
