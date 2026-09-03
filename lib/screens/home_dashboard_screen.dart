@@ -10,8 +10,6 @@ import 'bank_list_screen.dart';
 import 'musteriler_screen.dart';
 import 'irsaliye_screen.dart';
 import 'fatura_screen.dart';
-import 'pdf_viewer_screen.dart';
-import 'pdf_viewer_screen.dart';
 
 class HomeDashboardScreen extends StatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -78,7 +76,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       titleSpacing: 16,
       title: Row(
         children: [
-          // Authentic EAD Blue Badge Logo
           Container(
             width: 38,
             height: 38,
@@ -168,7 +165,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       child: ListView(
         padding: const EdgeInsets.all(14),
         children: [
-          // Üst Yönetici Özeti (Hero Card)
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -178,9 +174,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 10, offset: const Offset(0, 4)),
-              ],
             ),
             child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,10 +203,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           ),
           const SizedBox(height: 12),
 
-          // 2x2 Grid: Bugün Fatura & Bugün Sevk
           Row(
             children: [
-              // Bugün Fatura
               Expanded(
                 child: InkWell(
                   onTap: () => setState(() => _currentTabIndex = 3),
@@ -224,9 +215,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppTheme.slate200),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4, offset: const Offset(0, 2)),
-                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,7 +234,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2),
-                        Text('${_kpiData?.bugunFaturaAdet ?? 0} Adet Kesildi', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
+                        Text('\${_kpiData?.bugunFaturaAdet ?? 0} Adet Kesildi', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
                       ],
                     ),
                   ),
@@ -254,7 +242,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               ),
               const SizedBox(width: 10),
 
-              // Bugün Sevk
               Expanded(
                 child: InkWell(
                   onTap: () => setState(() => _currentTabIndex = 2),
@@ -265,9 +252,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppTheme.slate200),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4, offset: const Offset(0, 2)),
-                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,13 +265,13 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          '${_kgFormat.format(_kpiData?.bugunSevkKg ?? 0)} KG',
+                          '\${_kgFormat.format(_kpiData?.bugunSevkKg ?? 0)} KG',
                           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.slate900),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2),
-                        Text('${_kpiData?.bugunSevkAdet ?? 0} İrsaliye Çıktı', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
+                        Text('\${_kpiData?.bugunSevkAdet ?? 0} İrsaliye Çıktı', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
                       ],
                     ),
                   ),
@@ -297,7 +281,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Alt Geniş Kart: Müşteri Borçları
           InkWell(
             onTap: () => setState(() => _currentTabIndex = 1),
             borderRadius: BorderRadius.circular(16),
@@ -307,9 +290,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppTheme.slate200),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4, offset: const Offset(0, 2)),
-                ],
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -358,7 +338,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Son İşlemler Başlığı & Sekmeler
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -377,7 +356,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Son İşlemler Listesi
           if (_activeTab == 'fat') ...[
             if (_recentInvoices.isEmpty)
               _buildEmptyState('Henüz kayıtlı fatura bulunamadı.')
@@ -403,7 +381,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
-          boxShadow: isSelected ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : null,
         ),
         child: Text(
           label,
@@ -443,7 +420,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 Row(
                   children: [
                     Text(
-                      '${inv.evrakRef} • ${DateFormat('dd/MM').format(inv.date)}',
+                      '\${inv.evrakRef} • \${DateFormat('dd/MM').format(inv.date)}',
                       style: const TextStyle(fontSize: 10, color: AppTheme.slate400, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(width: 6),
@@ -477,17 +454,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               const SizedBox(height: 4),
               InkWell(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PdfViewerScreen(
-                        documentId: inv.id.toString(),
-                        documentNo: inv.evrakRef,
-                        title: inv.cariAd,
-                        type: 'fatura',
-                      ),
-                    ),
-                  );
+                  setState(() => _currentTabIndex = 3);
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -537,7 +504,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${way.evrakRef} • ${DateFormat('dd/MM').format(way.date)}',
+                  '\${way.evrakRef} • \${DateFormat('dd/MM').format(way.date)}',
                   style: const TextStyle(fontSize: 10, color: AppTheme.slate400, fontWeight: FontWeight.w500),
                 ),
               ],
@@ -547,23 +514,13 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${_kgFormat.format(way.miktarKg)} KG',
+                '\${_kgFormat.format(way.miktarKg)} KG',
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.primaryPurple),
               ),
               const SizedBox(height: 4),
               InkWell(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PdfViewerScreen(
-                        documentId: way.id.toString(),
-                        documentNo: way.evrakRef,
-                        title: way.cariAd,
-                        type: 'irsaliye',
-                      ),
-                    ),
-                  );
+                  setState(() => _currentTabIndex = 2);
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
