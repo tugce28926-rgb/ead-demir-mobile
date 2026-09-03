@@ -28,7 +28,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   List<RecentInvoice> _recentInvoices = [];
   List<RecentWaybill> _recentWaybills = [];
   bool _isLoading = true;
-  String _activeTab = 'fat';
+  String _activeTab = 'fat'; // 'fat' or 'irs'
 
   @override
   void initState() {
@@ -165,6 +165,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       child: ListView(
         padding: const EdgeInsets.all(14),
         children: [
+          // Üst Yönetici Özeti (Hero Card)
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -174,6 +175,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 10, offset: const Offset(0, 4)),
+              ],
             ),
             child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,6 +207,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           ),
           const SizedBox(height: 12),
 
+          // 2x2 Grid: Bugün Fatura & Bugün Sevk
           Row(
             children: [
               Expanded(
@@ -281,6 +286,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           ),
           const SizedBox(height: 10),
 
+          // Müşteri Borçları
           InkWell(
             onTap: () => setState(() => _currentTabIndex = 1),
             borderRadius: BorderRadius.circular(16),
@@ -338,6 +344,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           ),
           const SizedBox(height: 16),
 
+          // Son İşlemler
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
