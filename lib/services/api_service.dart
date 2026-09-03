@@ -1,0 +1,61 @@
+import 'package:dio/dio.dart';
+import '../core/constants.dart';
+import '../models/kpi_model.dart';
+import '../models/bank_model.dart';
+import '../models/cari_model.dart';
+import '../models/fatura_irsaliye_model.dart';
+
+class ApiService {
+  final Dio _dio = Dio(BaseOptions(
+    baseUrl: AppConstants.baseUrl,
+    connectTimeout: const Duration(seconds: 8),
+    receiveTimeout: const Duration(seconds: 8),
+  ));
+
+  String activeCompany = AppConstants.defaultCompany;
+
+  void setCompany(String companyDb) {
+    activeCompany = companyDb;
+    _dio.options.headers['X-Company-Db'] = companyDb;
+  }
+
+  Future<KpiData> getKpiData() async {
+    final res = await _dio.get('/kpi', queryParameters: {'company': activeCompany});
+    return KpiData.fromJson(res.data);
+  }
+
+  Future<List<RecentInvoice>> getRecentInvoices() async {
+    final res = await _dio.get('/invoices/recent', queryParameters: {'company': activeCompany});
+    return (res.data as List).map((e) => RecentInvoice.fromJson(e)).toList();
+  }
+
+  Future<List<RecentWaybill>> getRecentWaybills() async {
+    final res = await _dio.get('/waybills/recent', queryParameters: {'company': activeCompany});
+    return (res.data as List).map((e) => RecentWaybill.fromJson(e)).toList();
+  }
+
+  Future<List<BankAccount>> getBanks() async {
+    final res = await _dio.get('/banks', queryParameters: {'company': activeCompany});
+    return (res.data as List).map((e) => BankAccount.fromJson(e)).toList();
+  }
+
+  Future<List<BankTransaction>> getBankTransactions(String bankName) async {
+    final res = await _dio.get('/banks/${Uri.encodeComponent(bankName)}/transactions', queryParameters: {'company': activeCompany});
+    return (res.data as List).map((e) => BankTransaction.fromJson(e)).toList();
+  }
+
+  Future<List<CariSummary>> getDebtors() async {
+    final res = await _dio.get('/cariler/borclular', queryParameters: {'company': activeCompany});
+    return (res.data as List).map((e) => CariSummary.fromJson(e)).toList();
+  }
+
+  Future<bool> hideBank(String bankName) async {
+    final res = await _dio.post('/banks/${Uri.encodeComponent(bankName)}/hide', data: {'company': activeCompany});
+    return res.data['ok'] == true;
+  }
+
+  Future<bool> unhideBank(String bankName) async {
+    final res = await _dio.post('/banks/${Uri.encodeComponent(bankName)}/unhide', data: {'company': activeCompany});
+    return res.data['ok'] == true;
+  }
+}
