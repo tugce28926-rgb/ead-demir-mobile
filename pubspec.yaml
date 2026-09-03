@@ -1,10 +1,10 @@
 name: ead_mobile_app
-description: "EAD Demir  Mobil Yönetim ve İşlem Portalı"
+description: "EAD Demir & HSC Yapı Kurumsal Mobil Yönetim ve İşlem Portalı"
 publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=3.2.0 <4.0.0'
 
 dependencies:
   flutter:

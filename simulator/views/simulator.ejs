@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EAD Demir & HSC Yapı - Flutter Mobil Simülatör</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: #0b0f19; }
+    
+    /* iPhone 15 Pro Hardware Frame */
+    .iphone-frame {
+      width: 400px;
+      height: 844px;
+      background: #000000;
+      border-radius: 54px;
+      padding: 12px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 0 0 3px #1e293b;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .iphone-screen {
+      flex: 1;
+      background: #f8fafc;
+      border-radius: 44px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Dynamic Island */
+    .dynamic-island {
+      width: 120px;
+      height: 30px;
+      background: #000000;
+      border-radius: 20px;
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+    }
+
+    /* iOS Push Notification Banner */
+    #iosPushBanner {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      z-index: 999999;
+      background: rgba(15, 23, 42, 0.96);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      padding: 12px 14px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      transform: translateY(-160%);
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      cursor: pointer;
+    }
+
+    #iosPushBanner.show-notif {
+      transform: translateY(0) !important;
+      opacity: 1 !important;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-100 flex items-center justify-center p-4 lg:p-8">
+
+  <div class="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+    
+    <!-- Left: Inspector & Control Panel -->
+    <div class="lg:col-span-5 space-y-5">
+      <div class="space-y-1.5">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Flutter Canlı Mobil Simülatör</span>
+        </div>
+        <h1 class="text-3xl font-black tracking-tight text-white">EAD Demir Mobil</h1>
+        <p class="text-xs text-slate-400 leading-relaxed">
+          Zirve e-Fatura, e-İrsaliye ve Banka Yönetim Sisteminin canlı mobil simülatörü.
+        </p>
+      </div>
+
+      <!-- Active Company Selector -->
+      <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl space-y-2.5">
+        <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Aktif Çalışılan Şirket</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="setCompany('EAD_DEMIR_2026T')" id="btnEad" class="p-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs border border-blue-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20">
+            <i class="fa-solid fa-building"></i>
+            <span>EAD DEMİR</span>
+          </button>
+          <button onclick="setCompany('HSCYAPI_2026T')" id="btnHsc" class="p-2.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white font-bold text-xs border border-slate-700 transition-all flex items-center justify-center gap-2">
+            <i class="fa-solid fa-industry"></i>
+            <span>HSC YAPI</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Push Notification Trigger -->
+      <div class="bg-gradient-to-br from-indigo-950/60 to-slate-900/80 border border-indigo-500/30 p-4 rounded-2xl space-y-3">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-bell text-indigo-400"></i>
+            <span>Canlı Bildirim Testi</span>
+          </label>
+          <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30">
+            Zirve Dinleyici Aktif
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-400">Yeni kesilen fatura veya irsaliye bildirimi göndermek için tıklayın:</p>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" onclick="triggerTestNotification('fatura')" class="p-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 active:scale-95 cursor-pointer">
+            <span>📄</span>
+            <span>Fatura Bildirimi</span>
+          </button>
+          <button type="button" onclick="triggerTestNotification('irsaliye')" class="p-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 active:scale-95 cursor-pointer">
+            <span>🚚</span>
+            <span>İrsaliye Bildirimi</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Navigation -->
+      <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl space-y-2">
+        <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Doğrudan Ekran Aç</label>
+        <div class="grid grid-cols-2 gap-2 text-xs font-semibold text-slate-300">
+          <button onclick="navigateTab('home')" class="p-2 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-left flex items-center gap-2">
+            <span>🏠</span> Ana Sayfa (KPI)
+          </button>
+          <button onclick="navigateTab('musteriler')" class="p-2 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-left flex items-center gap-2">
+            <span>👥</span> Müşteriler
+          </button>
+          <button onclick="navigateTab('bankalar')" class="p-2 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-left flex items-center gap-2">
+            <span>🏦</span> Bankalar
+          </button>
+          <button onclick="navigateTab('irsaliyeler')" class="p-2 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-left flex items-center gap-2">
+            <span>🚚</span> İrsaliyeler
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: iPhone 15 Pro Hardware Frame -->
+    <div class="lg:col-span-7 flex justify-center">
+      <div class="iphone-frame">
+        
+        <!-- Screen Content Container -->
+        <div class="iphone-screen text-slate-800">
+          
+          <!-- iOS Push Notification Dropdown Banner -->
+          <div id="iosPushBanner" onclick="handleNotificationClick()">
+            <div class="flex items-start gap-3">
+              <div id="notifIcon" class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-base shrink-0 shadow-lg shadow-blue-500/30">
+                📄
+              </div>
+              <div class="flex-1 overflow-hidden">
+                <div class="flex items-center justify-between">
+                  <span id="notifApp" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">EAD DEMİR • ŞİMDİ</span>
+                  <span class="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>
+                </div>
+                <h4 id="notifTitle" class="text-xs font-black text-white mt-0.5">Yeni Fatura Kesildi!</h4>
+                <p id="notifBody" class="text-[11px] text-slate-200 truncate mt-0.5">FAAT DEMİR ÇELİK A.Ş. • ₺ 1.750.000,00 (e-Fatura)</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dynamic Island -->
+          <div class="dynamic-island">
+            <span class="w-2.5 h-2.5 rounded-full bg-slate-800"></span>
+            <span class="w-3 h-3 rounded-full bg-blue-950 border border-blue-600/30"></span>
+          </div>
+
+          <!-- Phone Status Bar -->
+          <div class="h-11 px-6 pt-2 flex items-center justify-between text-xs font-bold text-slate-800 shrink-0 select-none">
+            <span id="phoneTime">09:41</span>
+            <div class="flex items-center gap-1.5 text-[10px]">
+              <i class="fa-solid fa-signal"></i>
+              <i class="fa-solid fa-wifi"></i>
+              <i class="fa-solid fa-battery-full text-xs"></i>
+            </div>
+          </div>
+
+          <!-- Screen Viewport -->
+          <iframe id="phoneViewport" src="http://localhost:3002/" class="w-full flex-1 border-none rounded-b-[44px]"></iframe>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let currentCompany = 'EAD_DEMIR_2026T';
+    let lastNotifType = 'fatura';
+
+    function updateTime() {
+      const d = new Date();
+      const h = String(d.getHours()).padStart(2, '0');
+      const m = String(d.getMinutes()).padStart(2, '0');
+      document.getElementById('phoneTime').textContent = `${h}:${m}`;
+    }
+    setInterval(updateTime, 1000);
+    updateTime();
+
+    // Play Audio Tone (Web Audio API)
+    function playNotificationSound() {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const audioCtx = new AudioContext();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.12); // A5
+        gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.25);
+      } catch(e) {
+        console.log('Audio error:', e);
+      }
+    }
+
+    window.triggerTestNotification = function(type) {
+      lastNotifType = type;
+      const banner = document.getElementById('iosPushBanner');
+      const icon = document.getElementById('notifIcon');
+      const titleEl = document.getElementById('notifTitle');
+      const bodyEl = document.getElementById('notifBody');
+
+      if (!banner) return;
+
+      if (type === 'fatura') {
+        icon.className = 'w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-base shrink-0 shadow-lg shadow-blue-500/30';
+        icon.textContent = '📄';
+        titleEl.textContent = 'Yeni Fatura Kesildi!';
+        bodyEl.textContent = 'FAAT DEMİR ÇELİK A.Ş. • ₺ 1.750.000,00 (e-Fatura)';
+      } else {
+        icon.className = 'w-9 h-9 rounded-xl bg-purple-600 flex items-center justify-center text-base shrink-0 shadow-lg shadow-purple-500/30';
+        icon.textContent = '🚚';
+        titleEl.textContent = 'Yeni İrsaliye Sevk Edildi!';
+        bodyEl.textContent = 'KAYALAR MÜHENDİSLİK • 26.450 KG (34 EAD 001)';
+      }
+
+      playNotificationSound();
+
+      banner.classList.add('show-notif');
+
+      if (window.notifTimeout) clearTimeout(window.notifTimeout);
+      window.notifTimeout = setTimeout(() => {
+        banner.classList.remove('show-notif');
+      }, 4500);
+    };
+
+    window.handleNotificationClick = function() {
+      const banner = document.getElementById('iosPushBanner');
+      if (banner) banner.classList.remove('show-notif');
+      if (lastNotifType === 'fatura') {
+        navigateTab('faturalar');
+      } else {
+        navigateTab('irsaliyeler');
+      }
+    };
+
+    window.setCompany = function(comp) {
+      currentCompany = comp;
+      const btnEad = document.getElementById('btnEad');
+      const btnHsc = document.getElementById('btnHsc');
+      if (comp === 'EAD_DEMIR_2026T') {
+        btnEad.className = 'p-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs border border-blue-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20';
+        btnHsc.className = 'p-2.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white font-bold text-xs border border-slate-700 transition-all flex items-center justify-center gap-2';
+      } else {
+        btnHsc.className = 'p-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs border border-blue-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20';
+        btnEad.className = 'p-2.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white font-bold text-xs border border-slate-700 transition-all flex items-center justify-center gap-2';
+      }
+      reloadPhone();
+    };
+
+    window.navigateTab = function(tab) {
+      const frame = document.getElementById('phoneViewport');
+      const routes = {
+        'home': 'http://localhost:3002/',
+        'musteriler': 'http://localhost:3002/musteriler',
+        'bankalar': 'http://localhost:3002/finans',
+        'irsaliyeler': 'http://localhost:3002/irsaliye/liste',
+        'faturalar': 'http://localhost:3002/faturalar'
+      };
+      if (routes[tab] && frame) {
+        frame.src = routes[tab];
+      }
+    };
+
+    window.reloadPhone = function() {
+      const frame = document.getElementById('phoneViewport');
+      if (frame) frame.src = frame.src;
+    };
+  </script>
+</body>
+</html>
