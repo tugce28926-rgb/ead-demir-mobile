@@ -25,7 +25,7 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Force SDK 34 and minSdk 23
+      - name: Setup Android Project & SDK 34
         run: |
           flutter create --platforms=android --org=com.eaddemir --project-name=ead_mobile_app .
           cat << 'EOF' >> android/build.gradle
@@ -50,11 +50,18 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build Release APK
-        run: flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
+      - name: Build Release APK via Gradle
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease
+          cd ..
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ead-demir-mobil-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: |
+            android/app/build/outputs/apk/release/*.apk
+            build/app/outputs/apk/release/*.apk
+            build/app/outputs/flutter-apk/*.apk
