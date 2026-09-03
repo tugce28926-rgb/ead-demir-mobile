@@ -25,15 +25,27 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Configure Android SDK 34
+      - name: Force SDK 34 on All Android Plugins
         run: |
           flutter create --platforms=android --org=com.eaddemir --project-name=ead_mobile_app .
-          sed -i 's/compileSdkVersion .*/compileSdkVersion 34/g' android/app/build.gradle || true
-          sed -i 's/compileSdk = .*/compileSdk = 34/g' android/app/build.gradle || true
-          sed -i 's/targetSdkVersion .*/targetSdkVersion 34/g' android/app/build.gradle || true
-          sed -i 's/targetSdk = .*/targetSdk = 34/g' android/app/build.gradle || true
-          sed -i 's/minSdkVersion .*/minSdkVersion 21/g' android/app/build.gradle || true
-          sed -i 's/minSdk = .*/minSdk = 21/g' android/app/build.gradle || true
+          cat << 'EOF' >> android/build.gradle
+
+          subprojects {
+              afterEvaluate { project ->
+                  if (project.hasProperty('android')) {
+                      project.android {
+                          compileSdkVersion 34
+                          if (project.android.hasProperty('defaultConfig')) {
+                              project.android.defaultConfig {
+                                  minSdkVersion 21
+                                  targetSdkVersion 34
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+          EOF
 
       - name: Install dependencies
         run: flutter pub get
