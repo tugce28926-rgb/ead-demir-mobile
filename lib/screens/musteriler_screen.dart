@@ -81,7 +81,6 @@ class _MusterilerScreenState extends State<MusterilerScreen> with SingleTickerPr
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryBlue))
           : Column(
               children: [
-                // Arama Kutusu
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
                   child: TextField(
@@ -99,7 +98,6 @@ class _MusterilerScreenState extends State<MusterilerScreen> with SingleTickerPr
                     ),
                   ),
                 ),
-                // Tab İçerikleri
                 Expanded(
                   child: TabBarView(
                     controller: _tabController,
@@ -180,7 +178,7 @@ class _MusterilerScreenState extends State<MusterilerScreen> with SingleTickerPr
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => CariDetailScreen(cariKod: c.cariKod, cariAd: c.cariAd)),
+                  MaterialPageRoute(builder: (_) => CariDetailScreen(cariAd: c.cariAd, bakiye: c.bakiye)),
                 );
               },
             ),

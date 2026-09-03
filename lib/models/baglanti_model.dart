@@ -1,3 +1,38 @@
+class Baglanti {
+  final int id;
+  final String baglantiNo;
+  final String cariAd;
+  final double toplamKg;
+  final double kalanKg;
+  final double birimFiyat;
+  final double toplamTutar;
+  final double kalanTutar;
+
+  Baglanti({
+    required this.id,
+    required this.baglantiNo,
+    required this.cariAd,
+    required this.toplamKg,
+    required this.kalanKg,
+    required this.birimFiyat,
+    required this.toplamTutar,
+    required this.kalanTutar,
+  });
+
+  factory Baglanti.fromJson(Map<String, dynamic> json) {
+    return Baglanti(
+      id: json['id'] ?? 0,
+      baglantiNo: (json['baglantiNo'] ?? json['evrakNo'] ?? 'BGL-${json['id']}').toString(),
+      cariAd: (json['cariAd'] ?? json['unvan'] ?? '').toString(),
+      toplamKg: (json['miktar'] ?? json['toplamKg'] ?? 0).toDouble(),
+      kalanKg: (json['kalanMiktar'] ?? json['kalanKg'] ?? 0).toDouble(),
+      birimFiyat: (json['birimFiyat'] ?? 0).toDouble(),
+      toplamTutar: (json['tutar'] ?? json['toplamTutar'] ?? 0).toDouble(),
+      kalanTutar: (json['kalanTutar'] ?? 0).toDouble(),
+    );
+  }
+}
+
 class BaglantiItem {
   final String id;
   final String baslik;

@@ -40,6 +40,11 @@ class ApiService {
     return (res.data as List).map((e) => BankAccount.fromJson(e)).toList();
   }
 
+  Future<List<BankTransaction>> getBankTransactions(String bankName) async {
+    final res = await _dio.get('/banks/${Uri.encodeComponent(bankName)}/transactions', queryParameters: {'company': activeCompany});
+    return (res.data as List).map((e) => BankTransaction.fromJson(e)).toList();
+  }
+
   Future<List<CariSummary>> getDebtors() async {
     final res = await _dio.get('/cariler/borclular', queryParameters: {'company': activeCompany});
     return (res.data as List).map((e) => CariSummary.fromJson(e)).toList();
@@ -58,5 +63,15 @@ class ApiService {
   Future<List<Baglanti>> getBaglantilar() async {
     final res = await _dio.get('/baglantilar', queryParameters: {'company': activeCompany});
     return (res.data as List).map((e) => Baglanti.fromJson(e)).toList();
+  }
+
+  Future<bool> hideBank(String bankName) async {
+    final res = await _dio.post('/banks/${Uri.encodeComponent(bankName)}/hide', data: {'company': activeCompany});
+    return res.data['ok'] == true;
+  }
+
+  Future<bool> unhideBank(String bankName) async {
+    final res = await _dio.post('/banks/${Uri.encodeComponent(bankName)}/unhide', data: {'company': activeCompany});
+    return res.data['ok'] == true;
   }
 }
