@@ -25,9 +25,15 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Recreate Android Project Wrapper
+      - name: Configure Android SDK 34
         run: |
           flutter create --platforms=android --org=com.eaddemir --project-name=ead_mobile_app .
+          sed -i 's/compileSdkVersion .*/compileSdkVersion 34/g' android/app/build.gradle || true
+          sed -i 's/compileSdk = .*/compileSdk = 34/g' android/app/build.gradle || true
+          sed -i 's/targetSdkVersion .*/targetSdkVersion 34/g' android/app/build.gradle || true
+          sed -i 's/targetSdk = .*/targetSdk = 34/g' android/app/build.gradle || true
+          sed -i 's/minSdkVersion .*/minSdkVersion 21/g' android/app/build.gradle || true
+          sed -i 's/minSdk = .*/minSdk = 21/g' android/app/build.gradle || true
 
       - name: Install dependencies
         run: flutter pub get
