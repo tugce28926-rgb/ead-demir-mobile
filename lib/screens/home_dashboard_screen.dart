@@ -28,7 +28,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   List<RecentInvoice> _recentInvoices = [];
   List<RecentWaybill> _recentWaybills = [];
   bool _isLoading = true;
-  String _activeTab = 'fat'; // 'fat' or 'irs'
+  String _activeTab = 'fat';
 
   @override
   void initState() {
@@ -234,7 +234,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2),
-                        Text('\${_kpiData?.bugunFaturaAdet ?? 0} Adet Kesildi', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
+                        Text('${_kpiData?.bugunFaturaAdet ?? 0} Adet Kesildi', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
                       ],
                     ),
                   ),
@@ -265,13 +265,13 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          '\${_kgFormat.format(_kpiData?.bugunSevkKg ?? 0)} KG',
+                          '${_kgFormat.format(_kpiData?.bugunSevkKg ?? 0)} KG',
                           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.slate900),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2),
-                        Text('\${_kpiData?.bugunSevkAdet ?? 0} İrsaliye Çıktı', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
+                        Text('${_kpiData?.bugunSevkAdet ?? 0} İrsaliye Çıktı', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
                       ],
                     ),
                   ),
@@ -420,7 +420,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 Row(
                   children: [
                     Text(
-                      '\${inv.evrakRef} • \${DateFormat('dd/MM').format(inv.date)}',
+                      '${inv.evrakRef} • ' + DateFormat('dd/MM').format(inv.date),
                       style: const TextStyle(fontSize: 10, color: AppTheme.slate400, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(width: 6),
@@ -504,7 +504,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '\${way.evrakRef} • \${DateFormat('dd/MM').format(way.date)}',
+                  '${way.evrakRef} • ' + DateFormat('dd/MM').format(way.date),
                   style: const TextStyle(fontSize: 10, color: AppTheme.slate400, fontWeight: FontWeight.w500),
                 ),
               ],
@@ -514,7 +514,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '\${_kgFormat.format(way.miktarKg)} KG',
+                '${_kgFormat.format(way.miktarKg)} KG',
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.primaryPurple),
               ),
               const SizedBox(height: 4),
