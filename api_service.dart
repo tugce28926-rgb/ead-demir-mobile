@@ -106,4 +106,15 @@ class ApiService {
     final res = await _dio.get('/irsaliye/${Uri.encodeComponent(evrakno)}', queryParameters: {'company': activeCompany});
     return Map<String, dynamic>.from(res.data);
   }
+
+  Future<String> getDocumentHtml(String type, String evrakno) async {
+    final endpoint = type == 'fatura' ? '/fatura/html/' : '/irsaliye/html/';
+    final res = await _dio.get(
+      '$endpoint${Uri.encodeComponent(evrakno)}',
+      queryParameters: {'company': activeCompany},
+      options: Options(responseType: ResponseType.plain),
+    );
+    return res.data.toString();
+  }
 }
+
