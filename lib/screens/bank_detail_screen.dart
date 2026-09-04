@@ -6,8 +6,14 @@ import '../services/api_service.dart';
 import 'bank_transaction_form_screen.dart';
 
 class BankDetailScreen extends StatefulWidget {
-  final String bankName;
-  const BankDetailScreen({super.key, required this.bankName});
+  final BankAccount bank;
+  final List<BankAccount> allBanks;
+
+  const BankDetailScreen({
+    super.key,
+    required this.bank,
+    required this.allBanks,
+  });
 
   @override
   State<BankDetailScreen> createState() => _BankDetailScreenState();
@@ -16,6 +22,7 @@ class BankDetailScreen extends StatefulWidget {
 class _BankDetailScreenState extends State<BankDetailScreen> {
   final ApiService _apiService = ApiService();
   final NumberFormat _currency = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 2);
+
   List<BankTransaction> _transactions = [];
   bool _isLoading = true;
 
@@ -28,7 +35,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
   Future<void> _loadTransactions() async {
     setState(() => _isLoading = true);
     try {
-      final list = await _apiService.getBankTransactions(widget.bankName);
+      final list = await _apiService.getBankTransactions(widget.bank.bankName);
       setState(() {
         _transactions = list;
         _isLoading = false;
@@ -38,24 +45,28 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
     }
   }
 
-  void _openForm(TransactionFormType type) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => BankTransactionFormScreen(sourceBankName: widget.bankName, formType: type),
-      ),
-    );
-    if (result == true) {
-      _loadTransactions();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.slate50,
       appBar: AppBar(
-        title: Text(widget.bankName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+        title: Text(widget.bank.bankName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BankTransactionFormScreen(sourceBank: widget.bank, allBanks: widget.allBanks, initialType: 'virman'),
+                ),
+              ).then((_) => _loadTransactions());
+            },
+            icon: const Icon(Icons.add_circle_rounded, color: AppTheme.primaryBlue, size: 26),
+            tooltip: 'Yeni İşlem',
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryBlue))
@@ -65,196 +76,131 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(14),
                 children: [
-                  // Hızlı İşlem Butonları (Grid)
-                  _buildQuickActionButtons(),
-                  const SizedBox(height: 18),
+                  // Bank Header Card
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFF0F172A), Color(0xFF1E293B)]),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.bank.bankName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+                        const SizedBox(height: 4),
+                        if (widget.bank.iban.isNotEmpty)
+                          Text('IBAN: ${widget.bank.iban}', style: const TextStyle(fontSize: 10, color: AppTheme.slate300, fontFamily: 'monospace')),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('GÜNCEL BAKİYE:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
+                            Text(_currency.format(widget.bank.bakiye), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
 
+                  // 3 Quick Action Buttons
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('İŞLEM GEÇMİŞİ (İZOLASYONLU)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.slate500)),
-                      Text('${_transactions.length} Kayıt', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
+                      _buildQuickAction('Virman (Transfer)', Icons.swap_horiz_rounded, 'virman', AppTheme.primaryBlue),
+                      const SizedBox(width: 8),
+                      _buildQuickAction('Tahsilat', Icons.arrow_downward_rounded, 'gelen_havale', AppTheme.primaryEmerald),
+                      const SizedBox(width: 8),
+                      _buildQuickAction('Ödeme', Icons.arrow_upward_rounded, 'giden_havale', AppTheme.primaryRose),
                     ],
                   ),
+                  const SizedBox(height: 16),
+
+                  const Text('SON HESAP HAREKETLERİ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
                   const SizedBox(height: 8),
 
                   if (_transactions.isEmpty)
-                    const Center(child: Padding(padding: EdgeInsets.all(20), child: Text('Bu banka için henüz işlem kaydı yok.')))
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+                      child: const Center(child: Text('Kayıtlı hareket bulunamadı.', style: TextStyle(color: AppTheme.slate400, fontSize: 11))),
+                    )
                   else
-                    ..._transactions.map((tx) => _buildTransactionCard(tx)),
+                    ..._transactions.map((t) => _buildTransactionCard(t)),
                 ],
               ),
             ),
     );
   }
 
-  Widget _buildQuickActionButtons() {
-    final isKuveytInvestment = widget.bankName.toUpperCase().contains('KUVEYT') &&
-        (widget.bankName.toUpperCase().contains('YATIRIM') || widget.bankName.toUpperCase().contains('FON'));
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.slate200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Hızlı Banka İşlemleri', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppTheme.slate500)),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _buildActionBtn(
-                  Icons.arrow_downward,
-                  'Gelen Havale',
-                  AppTheme.primaryEmerald,
-                  const Color(0xFFECFDF5),
-                  () => _openForm(TransactionFormType.gelenHavale),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildActionBtn(
-                  Icons.arrow_upward,
-                  'Giden Havale',
-                  AppTheme.primaryRose,
-                  const Color(0xFFFFF1F2),
-                  () => _openForm(TransactionFormType.gidenHavale),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _buildActionBtn(
-                  Icons.swap_horiz,
-                  'Virman Yap',
-                  AppTheme.primaryPurple,
-                  const Color(0xFFFAF5FF),
-                  () => _openForm(TransactionFormType.virman),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildActionBtn(
-                  Icons.receipt_long,
-                  'Gider Fişi',
-                  AppTheme.primaryAmber,
-                  const Color(0xFFFFFBEB),
-                  () => _openForm(TransactionFormType.giderFisi),
-                ),
-              ),
-            ],
-          ),
-          if (isKuveytInvestment) ...[
-            const SizedBox(height: 8),
-            _buildActionBtn(
-              Icons.trending_up,
-              'Fon Alış & Satış İşlemleri',
-              AppTheme.primaryBlue,
-              const Color(0xFFEFF6FF),
-              () => _openForm(TransactionFormType.fonAlSat),
+  Widget _buildQuickAction(String title, IconData icon, String type, Color color) {
+    return Expanded(
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => BankTransactionFormScreen(sourceBank: widget.bank, allBanks: widget.allBanks, initialType: type),
             ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionBtn(IconData icon, String title, Color color, Color bg, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 6),
-            Text(title, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color)),
-          ],
+          ).then((_) => _loadTransactions());
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(height: 4),
+              Text(title, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: color)),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildTransactionCard(BankTransaction tx) {
-    final isGider = tx.category == 'gider';
+  Widget _buildTransactionCard(BankTransaction t) {
+    final isGiris = t.borc > 0;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppTheme.slate200),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                DateFormat('dd.MM.yyyy').format(tx.date),
-                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate400),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isGider ? const Color(0xFFFFF1F2) : const Color(0xFFECFDF5),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: isGider ? const Color(0xFFFFE4E6) : const Color(0xFFA7F3D0)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  t.aciklama.isNotEmpty ? t.aciklama : 'Banka Hareketi',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.slate900),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                child: Text(
-                  tx.operationType.toUpperCase(),
-                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: isGider ? AppTheme.primaryRose : AppTheme.primaryEmerald),
+                const SizedBox(height: 2),
+                Text(
+                  DateFormat('dd.MM.yyyy HH:mm').format(t.tarih),
+                  style: const TextStyle(fontSize: 9, color: AppTheme.slate400),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const Divider(height: 12, color: AppTheme.slate100),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      tx.cariName.isEmpty ? '-' : tx.cariName,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.slate900),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      tx.description,
-                      style: const TextStyle(fontSize: 10, color: AppTheme.slate500),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                '${isGider ? '-' : '+'}${_currency.format(tx.amount)}',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  color: isGider ? AppTheme.primaryRose : AppTheme.primaryEmerald,
-                ),
-              ),
-            ],
+          Text(
+            (isGiris ? '+ ' : '- ') + _currency.format(isGiris ? t.borc : t.alacak),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              color: isGiris ? AppTheme.primaryEmerald : AppTheme.primaryRose,
+            ),
           ),
         ],
       ),

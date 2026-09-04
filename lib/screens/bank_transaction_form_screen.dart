@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../core/theme.dart';
+import '../models/bank_model.dart';
+import '../models/cari_model.dart';
 import '../services/api_service.dart';
 
-enum TransactionFormType { gelenHavale, gidenHavale, virman, giderFisi, fonAlSat }
-
 class BankTransactionFormScreen extends StatefulWidget {
-  final String sourceBankName;
-  final TransactionFormType formType;
+  final BankAccount sourceBank;
+  final List<BankAccount> allBanks;
+  final String initialType; // 'virman', 'gelen_havale', 'giden_havale', 'gider'
 
   const BankTransactionFormScreen({
     super.key,
-    required this.sourceBankName,
-    required this.formType,
+    required this.sourceBank,
+    required this.allBanks,
+    this.initialType = 'virman',
   });
 
   @override
@@ -21,162 +22,118 @@ class BankTransactionFormScreen extends StatefulWidget {
 }
 
 class _BankTransactionFormScreenState extends State<BankTransactionFormScreen> {
-  final _formKey = GlobalKey<FormState>();
   final ApiService _apiService = ApiService();
+  final _formKey = GlobalKey<FormState>();
+
+  late String _operationType;
+  late BankAccount _sourceBank;
+  BankAccount? _targetBank;
+  CariSummary? _selectedCari;
 
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _cariSearchController = TextEditingController();
 
-  String? _selectedCari;
-  String? _targetBankName;
-  String? _selectedGiderType = 'POS Komisyonu';
-  String? _selectedFon = 'KLU - Kuveyt Türk Kısa Vadeli Kira Sertifikası';
-  String _fonIslemTuru = 'ALIS'; // 'ALIS' or 'SATIS'
-  DateTime _selectedDate = DateTime.now();
+  List<CariSummary> _caris = [];
+  bool _isLoadingCaris = false;
   bool _isSubmitting = false;
-
-  final List<String> _giderTypes = [
-    'POS Komisyonu',
-    'Hesap İşletim / Kart Aidatı',
-    'EFT / Havale Masrafı',
-    'Banka Faiz / Komisyon Gideri',
-    'Vergi / Harç Kesintisi',
-    'Diğer Banka Masrafı',
-  ];
-
-  final List<String> _availableBanks = [
-    'ZİRAAT BANKASI 5001',
-    'GARANTİ BANKASI-6294859',
-    'KUVEYT TÜRK',
-    'KUVEYT TÜRK YATIRIM',
-    'KUVEYT TÜRK FON HESABI',
-    'İŞ BANKASI',
-    'İŞ BANKASI KREDİ KARTI',
-    'VAKIFKATILIM',
-    'FİNANS BANK',
-    'EMLAK KATILIM BANKASI',
-  ];
-
-  final List<String> _fonList = [
-    'KLU - Kuveyt Türk Kısa Vadeli Kira Sertifikası',
-    'KTV - Kuveyt Türk Katılım Fonu',
-    'KSV - Kuveyt Türk Serbest Fon',
-  ];
 
   @override
   void initState() {
     super.initState();
-    _targetBankName = _availableBanks.firstWhere((b) => b != widget.sourceBankName, orElse: () => _availableBanks.first);
+    _operationType = widget.initialType;
+    _sourceBank = widget.sourceBank;
+    final otherBanks = widget.allBanks.where((b) => b.bankName != _sourceBank.bankName).toList();
+    if (otherBanks.isNotEmpty) {
+      _targetBank = otherBanks.first;
+    }
+    _loadCaris();
   }
 
-  String get _title {
-    switch (widget.formType) {
-      case TransactionFormType.gelenHavale:
-        return 'Gelen Havale Girişi';
-      case TransactionFormType.gidenHavale:
-        return 'Gönderilen Havale Girişi';
-      case TransactionFormType.virman:
-        return 'Banka Virman İşlemi';
-      case TransactionFormType.giderFisi:
-        return 'Banka Gider Fişi';
-      case TransactionFormType.fonAlSat:
-        return 'Fon Alış / Satış İşlemi';
+  Future<void> _loadCaris() async {
+    setState(() => _isLoadingCaris = true);
+    try {
+      final list = await _apiService.getAllCaris();
+      setState(() {
+        _caris = list;
+        _isLoadingCaris = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingCaris = false);
     }
   }
 
-  Color get _themeColor {
-    switch (widget.formType) {
-      case TransactionFormType.gelenHavale:
-        return AppTheme.primaryEmerald;
-      case TransactionFormType.gidenHavale:
-        return AppTheme.primaryRose;
-      case TransactionFormType.virman:
-        return AppTheme.primaryPurple;
-      case TransactionFormType.giderFisi:
-        return AppTheme.primaryAmber;
-      case TransactionFormType.fonAlSat:
-        return AppTheme.primaryBlue;
-    }
-  }
-
-  Future<void> _submit() async {
+  Future<void> _submitTransaction() async {
     if (!_formKey.currentState!.validate()) return;
-
-    final amount = double.tryParse(_amountController.text.replaceAll('.', '').replaceAll(',', '.'));
-    if (amount == null || amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen geçerli bir tutar giriniz.'), backgroundColor: Colors.red),
-      );
+    final amount = double.tryParse(_amountController.text.replaceAll(',', '.')) ?? 0;
+    if (amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lütfen geçerli bir tutar girin.')));
       return;
     }
 
     setState(() => _isSubmitting = true);
-
-    // Simulate API submission
-    await Future.delayed(const Duration(seconds: 1));
-
-    setState(() => _isSubmitting = false);
-
-    if (mounted) {
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(color: _themeColor.withOpacity(0.1), shape: BoxShape.circle),
-                child: Icon(Icons.check_circle_rounded, color: _themeColor, size: 32),
-              ),
-              const SizedBox(height: 14),
-              const Text('İşlem Başarılı', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 6),
-              Text(
-                '${NumberFormat.currency(locale: 'tr_TR', symbol: '₺').format(amount)} tutarındaki işlem Zirve SQL hesabına başarıyla kaydedildi.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, color: AppTheme.slate500),
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _themeColor,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    Navigator.pop(context, true);
-                  },
-                  child: const Text('Tamam', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ),
+    try {
+      final ok = await _apiService.createBankTransaction(
+        operationType: _operationType,
+        sourceBank: _sourceBank.bankName,
+        targetBank: _targetBank?.bankName,
+        cariRef: _selectedCari?.cariKod,
+        cariName: _selectedCari?.cariAd,
+        amount: amount,
+        description: _descController.text,
       );
+
+      setState(() => _isSubmitting = false);
+      if (ok) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(backgroundColor: AppTheme.primaryEmerald, content: Text('İşlem Zirve veritabanına başarıyla kaydedildi!')),
+        );
+        Navigator.pop(context, true);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Kayıt başarısız oldu.')));
+      }
+    } catch (e) {
+      setState(() => _isSubmitting = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final currency = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 2);
+    final otherBanks = widget.allBanks.where((b) => b.bankName != _sourceBank.bankName).toList();
+
     return Scaffold(
       backgroundColor: AppTheme.slate50,
       appBar: AppBar(
-        title: Text(_title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+        title: const Text('Banka İşlemi / Zirve Fişi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.slate900)),
         backgroundColor: Colors.white,
+        elevation: 0,
       ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Bank Info Banner
+            // İşlem Türü Seçici
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(color: AppTheme.slate200, borderRadius: BorderRadius.circular(12)),
+              child: Row(
+                children: [
+                  _buildTypeTab('Virman', 'virman'),
+                  _buildTypeTab('Tahsilat', 'gelen_havale'),
+                  _buildTypeTab('Ödeme', 'giden_havale'),
+                  _buildTypeTab('Gider', 'gider'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Kaynak Banka Kartı
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -184,226 +141,166 @@ class _BankTransactionFormScreenState extends State<BankTransactionFormScreen> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppTheme.slate200),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: _themeColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
+                  const Text('KAYNAK BANKA (HESAP)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
+                  const SizedBox(height: 4),
+                  Text(_sourceBank.bankName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
+                  Text('Mevcut Bakiye: ' + currency.format(_sourceBank.bakiye), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Virman ise Hedef Banka Seçimi
+            if (_operationType == 'virman') ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.slate200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('HEDEF BANKA (PARANIN GEÇECEĞİ HESAP)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<BankAccount>(
+                      value: _targetBank,
+                      decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
+                      items: otherBanks.map((b) {
+                        return DropdownMenuItem(value: b, child: Text('${b.bankName} (' + currency.format(b.bakiye) + ')', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)));
+                      }).toList(),
+                      onChanged: (val) => setState(() => _targetBank = val),
                     ),
-                    child: Center(child: Icon(Icons.account_balance_rounded, color: _themeColor, size: 20)),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('KAYNAK BANKA HESABI', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
-                        Text(widget.sourceBankName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
-                      ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
+
+            // Havale / Tahsilat ise Zirve Cari Arama
+            if (_operationType == 'gelen_havale' || _operationType == 'giden_havale') ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.slate200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('ZİRVE CARİ HESABI SEÇİN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
+                    const SizedBox(height: 6),
+                    Autocomplete<CariSummary>(
+                      displayStringForOption: (c) => c.cariAd,
+                      optionsBuilder: (textEditingValue) {
+                        if (textEditingValue.text.isEmpty) return const Iterable<CariSummary>.empty();
+                        return _caris.where((c) => c.cariAd.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+                      },
+                      onSelected: (c) => setState(() => _selectedCari = c),
+                      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                        return TextField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          decoration: InputDecoration(
+                            hintText: 'Cari unvanı yazın...',
+                            hintStyle: const TextStyle(fontSize: 12, color: AppTheme.slate400),
+                            prefixIcon: const Icon(Icons.person_search_rounded, color: AppTheme.primaryBlue, size: 20),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        );
+                      },
                     ),
+                    if (_selectedCari != null) ...[
+                      const SizedBox(height: 6),
+                      Text('Seçilen: ${_selectedCari!.cariAd} (${_selectedCari!.cariKod})', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryEmerald)),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
+
+            // Tutar Girişi
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.slate200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('İŞLEM TUTARI (₺)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _amountController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppTheme.slate900),
+                    decoration: InputDecoration(
+                      hintText: '0,00',
+                      prefixText: '₺ ',
+                      prefixStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    validator: (val) {
+                      if (val == null || val.isEmpty) return 'Lütfen tutar girin';
+                      return null;
+                    },
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Virman Hedef Banka Seçici
-            if (widget.formType == TransactionFormType.virman) ...[
-              _buildSectionTitle('HEDEF BANKA HESABI'),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppTheme.slate200),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _targetBankName,
-                    isExpanded: true,
-                    items: _availableBanks
-                        .where((b) => b != widget.sourceBankName)
-                        .map((b) => DropdownMenuItem(value: b, child: Text(b, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold))))
-                        .toList(),
-                    onChanged: (val) => setState(() => _targetBankName = val),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Cari Arama / Seçimi (Havale İşlemleri İçin)
-            if (widget.formType == TransactionFormType.gelenHavale || widget.formType == TransactionFormType.gidenHavale) ...[
-              _buildSectionTitle(widget.formType == TransactionFormType.gelenHavale ? 'MÜŞTERİ / CARİ SEÇİMİ' : 'TEDARİKÇİ / CARİ SEÇİMİ'),
-              TextFormField(
-                controller: _cariSearchController,
-                decoration: InputDecoration(
-                  hintText: 'Cari unvanı veya vergi no yazınız...',
-                  hintStyle: const TextStyle(fontSize: 12, color: AppTheme.slate400),
-                  prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.slate400, size: 20),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppTheme.slate200)),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppTheme.slate200)),
-                ),
-                validator: (val) {
-                  if (val == null || val.trim().isEmpty) return 'Lütfen cari unvanını giriniz';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Gider Fişi Tür Seçimi
-            if (widget.formType == TransactionFormType.giderFisi) ...[
-              _buildSectionTitle('MASRAF / GİDER TÜRÜ'),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppTheme.slate200),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedGiderType,
-                    isExpanded: true,
-                    items: _giderTypes
-                        .map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold))))
-                        .toList(),
-                    onChanged: (val) => setState(() => _selectedGiderType = val),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Fon Al / Sat Seçenekleri
-            if (widget.formType == TransactionFormType.fonAlSat) ...[
-              _buildSectionTitle('FON İŞLEM YÖNÜ'),
-              Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => setState(() => _fonIslemTuru = 'ALIS'),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: _fonIslemTuru == 'ALIS' ? const Color(0xFFEFF6FF) : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: _fonIslemTuru == 'ALIS' ? AppTheme.primaryBlue : AppTheme.slate200, width: 2),
-                        ),
-                        child: Center(
-                          child: Text('🟢 FON ALIŞ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: _fonIslemTuru == 'ALIS' ? AppTheme.primaryBlue : AppTheme.slate600)),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => setState(() => _fonIslemTuru = 'SATIS'),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: _fonIslemTuru == 'SATIS' ? const Color(0xFFFFF1F2) : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: _fonIslemTuru == 'SATIS' ? AppTheme.primaryRose : AppTheme.slate200, width: 2),
-                        ),
-                        child: Center(
-                          child: Text('🔴 FON SATIŞ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: _fonIslemTuru == 'SATIS' ? AppTheme.primaryRose : AppTheme.slate600)),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              _buildSectionTitle('YATIRIM FONU'),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppTheme.slate200),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedFon,
-                    isExpanded: true,
-                    items: _fonList
-                        .map((f) => DropdownMenuItem(value: f, child: Text(f, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold))))
-                        .toList(),
-                    onChanged: (val) => setState(() => _selectedFon = val),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // İşlem Tutarı
-            _buildSectionTitle('İŞLEM TUTARI (₺)'),
-            TextFormField(
-              controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppTheme.slate900),
-              decoration: InputDecoration(
-                prefixText: '₺ ',
-                prefixStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _themeColor),
-                hintText: '0,00',
-                hintStyle: const TextStyle(fontSize: 18, color: AppTheme.slate300),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppTheme.slate200)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppTheme.slate200)),
-              ),
-              validator: (val) {
-                if (val == null || val.trim().isEmpty) return 'Lütfen tutar giriniz';
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             // Açıklama
-            _buildSectionTitle('AÇIKLAMA (OPSİYONEL)'),
-            TextFormField(
-              controller: _descController,
-              maxLines: 2,
-              decoration: InputDecoration(
-                hintText: 'Zirve fiş açıklaması yazabilirsiniz...',
-                hintStyle: const TextStyle(fontSize: 12, color: AppTheme.slate400),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppTheme.slate200)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppTheme.slate200)),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.slate200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('AÇIKLAMA / DEKONT NOTU', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _descController,
+                    decoration: InputDecoration(
+                      hintText: 'Örn: Demir bedeli virmanı / Tahsilat...',
+                      hintStyle: const TextStyle(fontSize: 12, color: AppTheme.slate400),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 24),
 
-            // Onayla ve Zirve'ye Kaydet Butonu
+            // Kaydet Butonu
             SizedBox(
-              width: double.infinity,
               height: 52,
               child: ElevatedButton(
+                onPressed: _isSubmitting ? null : _submitTransaction,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _themeColor,
-                  foregroundColor: Colors.white,
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  backgroundColor: AppTheme.primaryBlue,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                onPressed: _isSubmitting ? null : _submit,
                 child: _isSubmitting
-                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : Row(
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.check_circle_rounded, size: 20),
-                          const SizedBox(width: 8),
-                          Text('Zirve\'ye Kaydet', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
+                          Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                          SizedBox(width: 8),
+                          Text('Zirveye Kaydet & Onayla', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white)),
                         ],
                       ),
               ),
@@ -414,12 +311,28 @@ class _BankTransactionFormScreenState extends State<BankTransactionFormScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppTheme.slate500, letterSpacing: 0.5),
+  Widget _buildTypeTab(String label, String key) {
+    final isSelected = _operationType == key;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _operationType = key),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
+                color: isSelected ? AppTheme.primaryBlue : AppTheme.slate600,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

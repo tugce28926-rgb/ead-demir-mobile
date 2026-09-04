@@ -45,6 +45,28 @@ class ApiService {
     return (res.data as List).map((e) => BankTransaction.fromJson(e)).toList();
   }
 
+  Future<bool> createBankTransaction({
+    required String operationType,
+    required String sourceBank,
+    String? targetBank,
+    String? cariRef,
+    String? cariName,
+    required double amount,
+    String? description,
+  }) async {
+    final res = await _dio.post('/banks/transaction', data: {
+      'company': activeCompany,
+      'operationType': operationType,
+      'sourceBank': sourceBank,
+      'targetBank': targetBank,
+      'cariRef': cariRef,
+      'cariName': cariName,
+      'amount': amount,
+      'description': description,
+    });
+    return res.data['ok'] == true;
+  }
+
   Future<List<CariSummary>> getDebtors() async {
     final res = await _dio.get('/cariler/borclular', queryParameters: {'company': activeCompany});
     return (res.data as List).map((e) => CariSummary.fromJson(e)).toList();
