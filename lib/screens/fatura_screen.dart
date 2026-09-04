@@ -45,6 +45,17 @@ class _FaturaScreenState extends State<FaturaScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.slate50,
+      appBar: AppBar(
+        title: const Text('e-Faturalar & e-Arşivler', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: _loadInvoices,
+            icon: const Icon(Icons.refresh_rounded, color: AppTheme.slate700),
+          ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: _loadInvoices,
         color: AppTheme.primaryBlue,
@@ -70,6 +81,7 @@ class _FaturaScreenState extends State<FaturaScreen> {
   Widget _buildInvoiceCard(RecentInvoice inv) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -78,78 +90,98 @@ class _FaturaScreenState extends State<FaturaScreen> {
           BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 6, offset: const Offset(0, 2)),
         ],
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => NativePdfViewerScreen(
-                title: inv.tur,
-                documentNo: inv.evrakRef,
-                cariAd: inv.cariAd,
-                amount: inv.tutar,
-                type: 'fatura',
-              ),
-            ),
-          );
-        },
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: const Color(0xFFEFF6FF),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Center(child: Text('📄', style: TextStyle(fontSize: 18))),
-        ),
-        title: Text(inv.cariAd, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.slate900), maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('${inv.evrakRef} • ${DateFormat('dd.MM.yyyy').format(inv.date)}', style: const TextStyle(fontSize: 10, color: AppTheme.slate400)),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: const Color(0xFFBFDBFE)),
-                  ),
-                  child: Text(inv.tur, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: AppTheme.primaryBlue)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  inv.cariAd,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.slate900),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(width: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              ),
+              Text(
+                _currency.format(inv.tutar),
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.slate900),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('${inv.evrakRef} • ${DateFormat("dd.MM.yyyy").format(inv.date)}', style: const TextStyle(fontSize: 10, color: AppTheme.slate400)),
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PdfViewerScreen(
+                        documentId: inv.id.toString(),
+                        documentNo: inv.evrakRef,
+                        title: inv.cariAd,
+                        type: 'fatura',
+                      ),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: const Color(0xFFECFDF5),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(6),
                     border: Border.all(color: const Color(0xFFA7F3D0)),
                   ),
-                  child: const Text('GİB ONAYLI', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: AppTheme.primaryEmerald)),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.print, size: 10, color: AppTheme.primaryEmerald),
+                      SizedBox(width: 3),
+                      Text('Göster & Yazdır', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppTheme.primaryEmerald)),
+                    ],
+                  ),
                 ),
-              ],
-            ),
-          ],
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(_currency.format(inv.tutar), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
-            const SizedBox(height: 2),
-            const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.print, size: 10, color: AppTheme.primaryEmerald),
-                SizedBox(width: 2),
-                Text('Göster & Yazdır', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppTheme.primaryEmerald)),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // DOĞRU VE GERÇEK FATURA ROZETLERİ
+          Row(
+            children: [
+              // 1. Fatura Türü
+              _buildBadge(inv.tur, const Color(0xFFEFF6FF), AppTheme.primaryBlue),
+              const SizedBox(width: 6),
+
+              // 2. GİB Durumu
+              if (inv.isIptal)
+                _buildBadge('İPTAL EDİLDİ', const Color(0xFFFEF2F2), AppTheme.primaryRose)
+              else if (inv.isGibGonderildi)
+                _buildBadge('GİB Onaylı', const Color(0xFFF0FDF4), AppTheme.primaryEmerald)
+              else
+                _buildBadge('GİB Bekliyor (Taslak)', const Color(0xFFFFFBEB), AppTheme.primaryAmber),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBadge(String text, Color bg, Color textCol) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: textCol.withOpacity(0.3)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: textCol),
       ),
     );
   }

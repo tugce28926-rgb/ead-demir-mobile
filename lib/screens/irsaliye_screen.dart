@@ -45,7 +45,8 @@ class _IrsaliyeScreenState extends State<IrsaliyeScreen> {
     final filtered = _waybills.where((w) {
       if (_searchQuery.isEmpty) return true;
       return w.cariAd.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          w.evrakRef.toLowerCase().contains(_searchQuery.toLowerCase());
+          w.evrakRef.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          w.faturaNo.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
 
     return Scaffold(
@@ -101,45 +102,34 @@ class _IrsaliyeScreenState extends State<IrsaliyeScreen> {
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(color: AppTheme.slate200),
                                 ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
                                             way.cariAd,
                                             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.slate900),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
-                                          const SizedBox(height: 4),
-                                          Row(
-                                            children: [
-                                              Text(
-                                                '${way.evrakRef} • ' + DateFormat('dd.MM.yyyy').format(way.date),
-                                                style: const TextStyle(fontSize: 10, color: AppTheme.slate400, fontWeight: FontWeight.w500),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                decoration: BoxDecoration(color: const Color(0xFFF0FDF4), borderRadius: BorderRadius.circular(6)),
-                                                child: const Text('GİB Onaylı', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: AppTheme.primaryEmerald)),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
+                                        ),
                                         Text(
                                           '${_kgFormat.format(way.miktarKg)} KG',
                                           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.primaryPurple),
                                         ),
-                                        const SizedBox(height: 4),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          '${way.evrakRef} • ${DateFormat("dd.MM.yyyy").format(way.date)}',
+                                          style: const TextStyle(fontSize: 10, color: AppTheme.slate400, fontWeight: FontWeight.w500),
+                                        ),
                                         InkWell(
                                           onTap: () {
                                             Navigator.push(
@@ -173,6 +163,32 @@ class _IrsaliyeScreenState extends State<IrsaliyeScreen> {
                                         ),
                                       ],
                                     ),
+                                    const SizedBox(height: 8),
+
+                                    // DOĞRU VE GERÇEK DURUM ROZETLERİ (GİB + FATURA)
+                                    Row(
+                                      children: [
+                                        // 1. GİB Gönderim Durumu
+                                        if (way.isIptal)
+                                          _buildBadge('İPTAL EDİLDİ', const Color(0xFFFEF2F2), AppTheme.primaryRose)
+                                        else if (way.isGibGonderildi)
+                                          _buildBadge('GİB Onaylı', const Color(0xFFF0FDF4), AppTheme.primaryEmerald)
+                                        else
+                                          _buildBadge('GİB Bekliyor', const Color(0xFFFFFBEB), AppTheme.primaryAmber),
+
+                                        const SizedBox(width: 6),
+
+                                        // 2. Faturalaşma Durumu
+                                        if (way.isFaturalandi)
+                                          _buildBadge(
+                                            way.faturaNo.isNotEmpty ? 'Faturalandı (${way.faturaNo})' : 'Faturalandı',
+                                            const Color(0xFFEFF6FF),
+                                            AppTheme.primaryBlue,
+                                          )
+                                        else
+                                          _buildBadge('Faturalanmadı (Açık)', const Color(0xFFFFF7ED), const Color(0xFFEA580C)),
+                                      ],
+                                    ),
                                   ],
                                 ),
                               );
@@ -182,6 +198,21 @@ class _IrsaliyeScreenState extends State<IrsaliyeScreen> {
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _buildBadge(String text, Color bg, Color textCol) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: textCol.withOpacity(0.3)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: textCol),
+      ),
     );
   }
 }
