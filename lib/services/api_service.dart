@@ -96,4 +96,14 @@ class ApiService {
     final res = await _dio.post('/banks/${Uri.encodeComponent(bankName)}/unhide', data: {'company': activeCompany});
     return res.data['ok'] == true;
   }
+
+  Future<Map<String, dynamic>> getFaturaDetail(String evrakno) async {
+    final res = await _dio.get('/fatura/${Uri.encodeComponent(evrakno)}', queryParameters: {'company': activeCompany});
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  Future<Map<String, dynamic>> getIrsaliyeDetail(String evrakno) async {
+    final res = await _dio.get('/irsaliye/${Uri.encodeComponent(evrakno)}', queryParameters: {'company': activeCompany});
+    return Map<String, dynamic>.from(res.data);
+  }
 }

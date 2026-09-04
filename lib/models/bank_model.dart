@@ -87,7 +87,7 @@ class BankTransaction {
     final bBorc = (json['borc'] ?? json['BORC'] ?? 0).toDouble();
     final bAlacak = (json['alacak'] ?? json['ALACAK'] ?? 0).toDouble();
     final desc = (json['aciklama'] ?? json['description'] ?? json['ACIKLAMA'] ?? '').toString();
-    final cName = (json['cariName'] ?? json['CARIADI'] ?? '').toString();
+    final cName = (json['cariName'] ?? json['CARI_AD'] ?? json['CARIADI'] ?? '').toString();
 
     return BankTransaction(
       zirveRef: json['zirveRef'] ?? json['HAREKETREF'],
