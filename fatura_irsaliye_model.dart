@@ -73,14 +73,20 @@ class RecentWaybill {
       } catch (_) {}
     }
 
+    final fatNo = (json['FATURA_NO'] ?? json['faturaNo'] ?? '').toString();
+    final isFat = json['IS_FATURALANDI'] == 1 || 
+                  json['isFaturalandi'] == true || 
+                  json['FATURA_DURUM'] == 'Faturalandı' || 
+                  fatNo.trim().isNotEmpty;
+
     return RecentWaybill(
       id: json['EVRAK_ID'] ?? json['id'] ?? json['SIRANO'] ?? 0,
       evrakRef: json['EVRAK_REF'] ?? json['evrakRef'] ?? json['EVRAKNO'] ?? '',
       date: dt,
       cariAd: json['CARI_AD'] ?? json['cariAd'] ?? json['CARIADI'] ?? '',
       miktarKg: (json['TOPLAM_MIKTAR'] ?? json['miktarKg'] ?? 0).toDouble(),
-      faturaNo: (json['FATURA_NO'] ?? json['faturaNo'] ?? '').toString(),
-      isFaturalandi: json['IS_FATURALANDI'] == 1 || json['isFaturalandi'] == true,
+      faturaNo: fatNo,
+      isFaturalandi: isFat,
       isGibGonderildi: json['IS_GIB_GONDERILDI'] == 1 || json['isGibGonderildi'] == true,
       isIptal: json['IS_IPTAL'] == 1 || json['isIptal'] == true,
     );
