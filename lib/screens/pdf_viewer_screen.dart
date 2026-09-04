@@ -20,207 +20,217 @@ class PdfViewerScreen extends StatelessWidget {
     required this.type,
   });
 
-  Future<Uint8List> _generateOfficialPdf(PdfPageFormat format) async {
+  Future<Uint8List> _generateOfficialDesktopPdf(PdfPageFormat format) async {
     final pdf = pw.Document();
     final isFatura = type == 'fatura';
-    final currency = NumberFormat.currency(locale: 'tr_TR', symbol: 'TL', decimalDigits: 2);
     final dateStr = DateFormat('dd.MM.yyyy').format(DateTime.now());
 
     pdf.addPage(
       pw.Page(
         pageFormat: format,
-        margin: const pw.EdgeInsets.all(24),
+        margin: const pw.EdgeInsets.all(20),
         build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              // 1. Resmi Başlık / Logo & Kurumsal Bilgi
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        'EAD DEMİR ÇELİK SAN. VE TİC. LTD. ŞTİ.',
-                        style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
+          return pw.Container(
+            padding: const pw.EdgeInsets.all(12),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.black, width: 1),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // 1. ŞİRKET BAŞLIĞI & GİB ROZETİ (MASAÜSTÜ İLE AYNI)
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Expanded(
+                      flex: 6,
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            'EAD DEMİR ÇELİK SANAYİ VE TİCARET LİMİTED ŞİRKETİ',
+                            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.black),
+                          ),
+                          pw.SizedBox(height: 2),
+                          pw.Text('75. Yıl OSB Mah. 20. Cad. No: 14 Odunpazarı / ESKİŞEHİR', style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.black)),
+                          pw.Text('Tel: (0222) 236 00 00 | Web: www.eaddemir.com.tr', style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.black)),
+                          pw.Text('Vergi Dairesi: Yunusemre VD. | VKN: 3231140000', style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.black)),
+                          pw.Text('Mersis No: 0323114000000001 | Ticaret Sicil No: 45210', style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.black)),
+                        ],
                       ),
-                      pw.SizedBox(height: 2),
-                      pw.Text('75. Yıl OSB Mah. 20. Cad. No: 14 Odunpazarı / ESKİŞEHİR', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
-                      pw.Text('Vergi Dairesi: Yunusemre VD. | VKN: 3231140000', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
-                      pw.Text('Mersis No: 0323114000000001 | Ticaret Sicil: 45210', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
-                    ],
-                  ),
-                  pw.Container(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: pw.BoxDecoration(
-                      border: pw.Border.all(color: PdfColors.blue800, width: 1.5),
-                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
                     ),
-                    child: pw.Column(
+                    pw.Expanded(
+                      flex: 4,
+                      child: pw.Container(
+                        padding: const pw.EdgeInsets.all(6),
+                        decoration: pw.BoxDecoration(
+                          border: pw.Border.all(color: PdfColors.black, width: 1),
+                        ),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.center,
+                          children: [
+                            pw.Text(
+                              isFatura ? 'e-FATURA' : 'e-İRSALİYE',
+                              style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+                            ),
+                            pw.SizedBox(height: 2),
+                            pw.Text('GELİR İDARESİ BAŞKANLIĞI', style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold)),
+                            pw.Text(isFatura ? 'e-Fatura Sistemi' : 'e-İrsaliye Sistemi', style: const pw.TextStyle(fontSize: 6.5)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 8),
+                pw.Divider(thickness: 1, color: PdfColors.black),
+                pw.SizedBox(height: 4),
+
+                // 2. ALICI BİLGİLERİ & EVRAK DETAYI
+                pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Expanded(
+                      flex: 6,
+                      child: pw.Container(
+                        padding: const pw.EdgeInsets.all(6),
+                        decoration: pw.BoxDecoration(
+                          border: pw.Border.all(color: PdfColors.grey600, width: 0.5),
+                        ),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text('SAYIN / MÜŞTERİ BİLGİLERİ', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                            pw.SizedBox(height: 2),
+                            pw.Text(title, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                            pw.SizedBox(height: 2),
+                            pw.Text('Vergi Dairesi / VKN: İlgili Zirve Cari Kartı', style: const pw.TextStyle(fontSize: 7.5)),
+                            pw.Text('Adres: Türkiye', style: const pw.TextStyle(fontSize: 7.5)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    pw.SizedBox(width: 6),
+                    pw.Expanded(
+                      flex: 4,
+                      child: pw.Container(
+                        padding: const pw.EdgeInsets.all(6),
+                        decoration: pw.BoxDecoration(
+                          border: pw.Border.all(color: PdfColors.grey600, width: 0.5),
+                        ),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+                              pw.Text('Belge No:', style: const pw.TextStyle(fontSize: 7.5)),
+                              pw.Text(documentNo, style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                            ]),
+                            pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+                              pw.Text('Tarih:', style: const pw.TextStyle(fontSize: 7.5)),
+                              pw.Text(dateStr, style: const pw.TextStyle(fontSize: 7.5)),
+                            ]),
+                            pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+                              pw.Text('Saat / Zaman:', style: const pw.TextStyle(fontSize: 7.5)),
+                              pw.Text('12:00:00', style: const pw.TextStyle(fontSize: 7.5)),
+                            ]),
+                            pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+                              pw.Text('Senaryo:', style: const pw.TextStyle(fontSize: 7.5)),
+                              pw.Text('TİCARİFATURA', style: const pw.TextStyle(fontSize: 7.5)),
+                            ]),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 10),
+
+                // 3. KALEMLER TABLOSU
+                pw.Table(
+                  border: pw.TableBorder.all(color: PdfColors.black, width: 0.5),
+                  children: [
+                    pw.TableRow(
+                      decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                       children: [
-                        pw.Text(isFatura ? 'e-FATURA' : 'e-İRSALİYE', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
-                        pw.Text('GİB Resmi Belgesi', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600)),
+                        pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text('Sıra', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text('Mal / Hizmet Cinsi & Açıklaması', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text('Miktar', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text('Birim', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text('Birim Fiyat', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text('KDV %', textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text('Tutar', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold))),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              pw.SizedBox(height: 12),
-              pw.Divider(thickness: 1, color: PdfColors.grey400),
-              pw.SizedBox(height: 8),
+                    pw.TableRow(
+                      children: [
+                        pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('1', style: const pw.TextStyle(fontSize: 7.5))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(isFatura ? 'NERVÜRLÜ İNŞAAT DEMİRİ (Zirve Sevkiyatı)' : 'İNŞAAT DEMİRİ SEVKİYATI', style: const pw.TextStyle(fontSize: 7.5))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('7.920,00', textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 7.5))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('KG', style: const pw.TextStyle(fontSize: 7.5))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('26,50 TL', textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 7.5))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('%20', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 7.5))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('209.880,00 TL', textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 7.5))),
+                      ],
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 10),
 
-              // 2. Alıcı / Cari Bilgileri & Belge Detayları
-              pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Expanded(
-                    flex: 6,
-                    child: pw.Container(
-                      padding: const pw.EdgeInsets.all(8),
+                // 4. TOPLAMLAR VE KDV ÖZETİ
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Container(
+                      width: 250,
+                      padding: const pw.EdgeInsets.all(6),
                       decoration: pw.BoxDecoration(
-                        border: pw.Border.all(color: PdfColors.grey300),
-                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                        border: pw.Border.all(color: PdfColors.grey600, width: 0.5),
                       ),
                       child: pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Text('SAYIN / ALICI:', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.grey600)),
-                          pw.SizedBox(height: 3),
-                          pw.Text(title, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('NOTLAR / AÇIKLAMA:', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
                           pw.SizedBox(height: 2),
-                          pw.Text('Vergi Dairesi / VKN: İlgili Zirve Cari Kartı', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
-                          pw.Text('Adres: Türkiye', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                          pw.Text('İşbu belge 213 sayılı VUK hükümlerine göre düzenlenmiştir.', style: const pw.TextStyle(fontSize: 7)),
+                          pw.Text('GİB e-Belge portalı üzerinden resmi olarak onaylanmıştır.', style: const pw.TextStyle(fontSize: 7)),
                         ],
                       ),
                     ),
-                  ),
-                  pw.SizedBox(width: 10),
-                  pw.Expanded(
-                    flex: 4,
-                    child: pw.Container(
-                      padding: const pw.EdgeInsets.all(8),
+                    pw.Container(
+                      width: 210,
+                      padding: const pw.EdgeInsets.all(6),
                       decoration: pw.BoxDecoration(
-                        border: pw.Border.all(color: PdfColors.grey300),
-                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                        border: pw.Border.all(color: PdfColors.black, width: 0.5),
+                        color: PdfColors.grey100,
                       ),
                       child: pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
                           pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-                            pw.Text('Belge No:', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
-                            pw.Text(documentNo, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                            pw.Text('Mal/Hizmet Toplamı:', style: const pw.TextStyle(fontSize: 7.5)),
+                            pw.Text('209.880,00 TL', style: const pw.TextStyle(fontSize: 7.5)),
                           ]),
-                          pw.SizedBox(height: 2),
                           pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-                            pw.Text('Düzenleme Tarihi:', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
-                            pw.Text(dateStr, style: const pw.TextStyle(fontSize: 8)),
+                            pw.Text('Hesaplanan KDV (%20):', style: const pw.TextStyle(fontSize: 7.5)),
+                            pw.Text('41.976,00 TL', style: const pw.TextStyle(fontSize: 7.5)),
                           ]),
-                          pw.SizedBox(height: 2),
                           pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-                            pw.Text('Düzenleme Saati:', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
-                            pw.Text('14:30:00', style: const pw.TextStyle(fontSize: 8)),
+                            pw.Text('KDV Tevkifatı (5/10):', style: const pw.TextStyle(fontSize: 7.5)),
+                            pw.Text('-20.988,00 TL', style: const pw.TextStyle(fontSize: 7.5)),
                           ]),
-                          pw.SizedBox(height: 2),
+                          pw.Divider(thickness: 0.5, color: PdfColors.black),
                           pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-                            pw.Text('Senaryo:', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
-                            pw.Text('TİCARİFATURA', style: const pw.TextStyle(fontSize: 8)),
+                            pw.Text('ÖDENECEK TUTAR:', style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
+                            pw.Text('230.868,00 TL', style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
                           ]),
                         ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-              pw.SizedBox(height: 14),
-
-              // 3. Kalemler Tablosu
-              pw.Table(
-                border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
-                children: [
-                  pw.TableRow(
-                    decoration: const pw.BoxDecoration(color: PdfColors.grey200),
-                    children: [
-                      pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('S.No', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold))),
-                      pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('Mal / Hizmet Açıklaması', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold))),
-                      pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('Miktar', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold))),
-                      pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('Birim', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold))),
-                      pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('Birim Fiyat', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold))),
-                      pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('KDV %', textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold))),
-                      pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('Tutar', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold))),
-                    ],
-                  ),
-                  pw.TableRow(
-                    children: [
-                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('1', style: const pw.TextStyle(fontSize: 8))),
-                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(isFatura ? 'NERVÜRLÜ İNŞAAT DEMİRİ (Zirve Sevkiyatı)' : 'İNŞAAT DEMİRİ SEVKİYATI', style: const pw.TextStyle(fontSize: 8))),
-                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('7.920,00', textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 8))),
-                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('KG', style: const pw.TextStyle(fontSize: 8))),
-                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('26,50 TL', textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 8))),
-                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('%20', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8))),
-                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('209.880,00 TL', textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 8))),
-                    ],
-                  ),
-                ],
-              ),
-              pw.SizedBox(height: 12),
-
-              // 4. Alt Toplamlar ve KDV Özeti
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Container(
-                    width: 260,
-                    padding: const pw.EdgeInsets.all(8),
-                    decoration: pw.BoxDecoration(
-                      border: pw.Border.all(color: PdfColors.grey300),
-                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                    ),
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text('Açıklama / Notlar:', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                        pw.Text('İşbu belge 213 sayılı V.U.K. hükümlerine göre düzenlenmiştir.', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700)),
-                        pw.Text('GİB e-Belge portalı üzerinden resmi olarak onaylanmıştır.', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700)),
-                      ],
-                    ),
-                  ),
-                  pw.Container(
-                    width: 220,
-                    padding: const pw.EdgeInsets.all(8),
-                    decoration: pw.BoxDecoration(
-                      color: PdfColors.grey100,
-                      border: pw.Border.all(color: PdfColors.grey300),
-                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                    ),
-                    child: pw.Column(
-                      children: [
-                        pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-                          pw.Text('Mal/Hizmet Toplamı:', style: const pw.TextStyle(fontSize: 8)),
-                          pw.Text('209.880,00 TL', style: const pw.TextStyle(fontSize: 8)),
-                        ]),
-                        pw.SizedBox(height: 2),
-                        pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-                          pw.Text('Hesaplanan KDV (%20):', style: const pw.TextStyle(fontSize: 8)),
-                          pw.Text('41.976,00 TL', style: const pw.TextStyle(fontSize: 8)),
-                        ]),
-                        pw.SizedBox(height: 2),
-                        pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-                          pw.Text('KDV Tevkifatı (5/10):', style: const pw.TextStyle(fontSize: 8)),
-                          pw.Text('-20.988,00 TL', style: const pw.TextStyle(fontSize: 8)),
-                        ]),
-                        pw.Divider(thickness: 0.5, color: PdfColors.grey400),
-                        pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-                          pw.Text('ÖDENECEK TUTAR:', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
-                          pw.Text('230.868,00 TL', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
-                        ]),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -242,7 +252,7 @@ class PdfViewerScreen extends StatelessWidget {
             icon: const Icon(Icons.share_rounded, color: AppTheme.primaryBlue),
             tooltip: 'WhatsApp & PDF Paylaş',
             onPressed: () async {
-              final pdfBytes = await _generateOfficialPdf(PdfPageFormat.a4);
+              final pdfBytes = await _generateOfficialDesktopPdf(PdfPageFormat.a4);
               await Printing.sharePdf(
                 bytes: pdfBytes,
                 filename: '${type}_$documentNo.pdf',
@@ -252,7 +262,7 @@ class PdfViewerScreen extends StatelessWidget {
         ],
       ),
       body: PdfPreview(
-        build: (format) => _generateOfficialPdf(format),
+        build: (format) => _generateOfficialDesktopPdf(format),
         allowPrinting: true,
         allowSharing: true,
         canChangeOrientation: false,
