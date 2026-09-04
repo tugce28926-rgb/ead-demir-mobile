@@ -53,20 +53,6 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
         title: Text(widget.bank.bankName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
         backgroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => BankTransactionFormScreen(sourceBank: widget.bank, allBanks: widget.allBanks, initialType: 'virman'),
-                ),
-              ).then((_) => _loadTransactions());
-            },
-            icon: const Icon(Icons.add_circle_rounded, color: AppTheme.primaryBlue, size: 26),
-            tooltip: 'Yeni İşlem',
-          ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryBlue))
@@ -101,28 +87,30 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
 
-                  // 3 Quick Action Buttons
+                  // 4 QUICK ACTION BUTTONS (Tahsilat, Ödeme, Virman, Gider)
                   Row(
                     children: [
-                      _buildQuickAction('Virman (Transfer)', Icons.swap_horiz_rounded, 'virman', AppTheme.primaryBlue),
-                      const SizedBox(width: 8),
                       _buildQuickAction('Tahsilat', Icons.arrow_downward_rounded, 'gelen_havale', AppTheme.primaryEmerald),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       _buildQuickAction('Ödeme', Icons.arrow_upward_rounded, 'giden_havale', AppTheme.primaryRose),
+                      const SizedBox(width: 6),
+                      _buildQuickAction('Virman', Icons.swap_horiz_rounded, 'virman', AppTheme.primaryBlue),
+                      const SizedBox(width: 6),
+                      _buildQuickAction('Gider', Icons.receipt_long_rounded, 'gider', AppTheme.primaryAmber),
                     ],
                   ),
                   const SizedBox(height: 16),
 
-                  const Text('SON HESAP HAREKETLERİ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
+                  const Text('SON HESAP HAREKETLERİ (CBK İŞLEMLERİ)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
                   const SizedBox(height: 8),
 
                   if (_transactions.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
-                      child: const Center(child: Text('Kayıtlı hareket bulunamadı.', style: TextStyle(color: AppTheme.slate400, fontSize: 11))),
+                      child: const Center(child: Text('Kayıtlı hesap hareketi bulunamadı.', style: TextStyle(color: AppTheme.slate400, fontSize: 11))),
                     )
                   else
                     ..._transactions.map((t) => _buildTransactionCard(t)),
@@ -165,6 +153,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
 
   Widget _buildTransactionCard(BankTransaction t) {
     final isGiris = t.borc > 0;
+    final amount = isGiris ? t.borc : t.alacak;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -181,21 +170,21 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  t.aciklama.isNotEmpty ? t.aciklama : 'Banka Hareketi',
+                  t.aciklama.isNotEmpty ? t.aciklama : (t.cariName.isNotEmpty ? t.cariName : 'Banka Hareketi'),
                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.slate900),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  DateFormat('dd.MM.yyyy HH:mm').format(t.tarih),
+                  DateFormat('dd.MM.yyyy').format(t.tarih),
                   style: const TextStyle(fontSize: 9, color: AppTheme.slate400),
                 ),
               ],
             ),
           ),
           Text(
-            (isGiris ? '+ ' : '- ') + _currency.format(isGiris ? t.borc : t.alacak),
+            (isGiris ? '+ ' : '- ') + _currency.format(amount > 0 ? amount : t.amount),
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w900,

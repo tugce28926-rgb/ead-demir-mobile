@@ -4,7 +4,6 @@ import '../core/theme.dart';
 import '../models/bank_model.dart';
 import '../services/api_service.dart';
 import 'bank_detail_screen.dart';
-import 'bank_transaction_form_screen.dart';
 
 class BankListScreen extends StatefulWidget {
   const BankListScreen({super.key});
@@ -19,6 +18,7 @@ class _BankListScreenState extends State<BankListScreen> {
 
   List<BankAccount> _banks = [];
   bool _isLoading = true;
+  bool _showHidden = false;
 
   @override
   void initState() {
@@ -39,9 +39,22 @@ class _BankListScreenState extends State<BankListScreen> {
     }
   }
 
+  Future<void> _toggleHideBank(BankAccount bank) async {
+    try {
+      if (bank.hidden) {
+        await _apiService.unhideBank(bank.bankName);
+      } else {
+        await _apiService.hideBank(bank.bankName);
+      }
+      _loadBanks();
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
-    final totalBalance = _banks.where((b) => !b.hidden).fold<double>(0, (sum, b) => sum + b.bakiye);
+    final mainBanks = _banks.where((b) => !b.hidden).toList();
+    final hiddenBanks = _banks.where((b) => b.hidden).toList();
+    final totalBalance = mainBanks.fold<double>(0, (sum, b) => sum + b.bakiye);
 
     return Scaffold(
       backgroundColor: AppTheme.slate50,
@@ -64,7 +77,7 @@ class _BankListScreenState extends State<BankListScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(14),
                 children: [
-                  // Top Total Card
+                  // Top Total Card (Ana Bankalar Toplamı)
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -81,51 +94,71 @@ class _BankListScreenState extends State<BankListScreen> {
                           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white),
                         ),
                         const SizedBox(height: 2),
-                        Text('${_banks.length} Hesap • Canlı Zirve Bakiyeleri', style: const TextStyle(fontSize: 10, color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
+                        Text('${mainBanks.length} Ana Hesap • Canlı Zirve Bakiyeleri', style: const TextStyle(fontSize: 10, color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
 
-                  // Hızlı İşlem Butonları (Virman, Tahsilat, Ödeme)
+                  // ANA BANKALAR
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            if (_banks.isNotEmpty) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => BankTransactionFormScreen(sourceBank: _banks.first, allBanks: _banks, initialType: 'virman'),
-                                ),
-                              ).then((_) => _loadBanks());
-                            }
-                          },
-                          icon: const Icon(Icons.swap_horiz_rounded, size: 16, color: Colors.white),
-                          label: const Text('Virman / Transfer', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryBlue,
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
-                      ),
+                      const Text('ANA BANKALAR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
+                      Text('${mainBanks.length} Hesap', style: const TextStyle(fontSize: 11, color: AppTheme.slate400, fontWeight: FontWeight.bold)),
                     ],
                   ),
-                  const SizedBox(height: 14),
-
-                  const Text('HESAPLAR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
                   const SizedBox(height: 8),
 
-                  ..._banks.map((b) => _buildBankCard(b)),
+                  ...mainBanks.map((b) => _buildBankCard(b, isMain: true)),
+
+                  const SizedBox(height: 16),
+
+                  // DİĞER BANKALAR (GİZLENENLER)
+                  if (hiddenBanks.isNotEmpty) ...[
+                    InkWell(
+                      onTap: () => setState(() => _showHidden = !_showHidden),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppTheme.slate200),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.archive_outlined, size: 18, color: AppTheme.slate500),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'DİĞER BANKALAR (${hiddenBanks.length})',
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate700),
+                                ),
+                              ],
+                            ),
+                            Icon(
+                              _showHidden ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                              color: AppTheme.slate500,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (_showHidden) ...[
+                      const SizedBox(height: 8),
+                      ...hiddenBanks.map((b) => _buildBankCard(b, isMain: false)),
+                    ],
+                  ],
                 ],
               ),
             ),
     );
   }
 
-  Widget _buildBankCard(BankAccount bank) {
+  Widget _buildBankCard(BankAccount bank, {required bool isMain}) {
     final isNegative = bank.bakiye < 0;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -158,29 +191,53 @@ class _BankListScreenState extends State<BankListScreen> {
             if (bank.iban.isNotEmpty) Text(bank.iban, style: const TextStyle(fontSize: 9, color: AppTheme.slate400, fontFamily: 'monospace')),
           ],
         ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              _currency.format(bank.bakiye),
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
-                color: isNegative ? AppTheme.primaryRose : AppTheme.primaryEmerald,
-              ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  _currency.format(bank.bakiye),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    color: isNegative ? AppTheme.primaryRose : AppTheme.primaryEmerald,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppTheme.slate100,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    bank.accountType.isNotEmpty ? bank.accountType : 'Vadesiz',
+                    style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: AppTheme.slate600),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 2),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppTheme.slate100,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                bank.accountType.isNotEmpty ? bank.accountType : 'Vadesiz',
-                style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: AppTheme.slate600),
-              ),
+            const SizedBox(width: 4),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, size: 18, color: AppTheme.slate400),
+              onSelected: (val) {
+                if (val == 'toggle_hide') _toggleHideBank(bank);
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'toggle_hide',
+                  child: Row(
+                    children: [
+                      Icon(isMain ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 16, color: AppTheme.slate700),
+                      const SizedBox(width: 8),
+                      Text(isMain ? 'Diğer Bankalara Taşı' : 'Ana Bankalara Taşı', style: const TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),

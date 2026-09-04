@@ -165,20 +165,20 @@ class _IrsaliyeScreenState extends State<IrsaliyeScreen> {
                                     ),
                                     const SizedBox(height: 8),
 
-                                    // DOĞRU VE GERÇEK DURUM ROZETLERİ (GİB + FATURA)
+                                    // DOĞRU VE NET DURUM ROZETLERİ (GÖNDERİLDİ / BEKLİYOR & FATURALANDI / FATURALANMADI)
                                     Row(
                                       children: [
-                                        // 1. GİB Gönderim Durumu
+                                        // 1. GİB Durumu: Gönderildi / Bekliyor
                                         if (way.isIptal)
                                           _buildBadge('İPTAL EDİLDİ', const Color(0xFFFEF2F2), AppTheme.primaryRose)
                                         else if (way.isGibGonderildi)
-                                          _buildBadge('GİB Onaylı', const Color(0xFFF0FDF4), AppTheme.primaryEmerald)
+                                          _buildBadge('Gönderildi', const Color(0xFFF0FDF4), AppTheme.primaryEmerald)
                                         else
-                                          _buildBadge('GİB Bekliyor', const Color(0xFFFFFBEB), AppTheme.primaryAmber),
+                                          _buildBadge('Bekliyor', const Color(0xFFFFFBEB), AppTheme.primaryAmber),
 
                                         const SizedBox(width: 6),
 
-                                        // 2. Faturalaşma Durumu
+                                        // 2. Faturalaşma Durumu: Faturalandı / Faturalanmadı
                                         if (way.isFaturalandi)
                                           _buildBadge(
                                             way.faturaNo.isNotEmpty ? 'Faturalandı (${way.faturaNo})' : 'Faturalandı',
@@ -186,7 +186,7 @@ class _IrsaliyeScreenState extends State<IrsaliyeScreen> {
                                             AppTheme.primaryBlue,
                                           )
                                         else
-                                          _buildBadge('Faturalanmadı (Açık)', const Color(0xFFFFF7ED), const Color(0xFFEA580C)),
+                                          _buildBadge('Faturalanmadı', const Color(0xFFFFF7ED), const Color(0xFFEA580C)),
                                       ],
                                     ),
                                   ],
