@@ -167,4 +167,31 @@ class ApiService {
     );
     return Uint8List.fromList(res.data);
   }
+
+  Future<bool> createPosTahsilat({
+    required String bankName,
+    required String cariName,
+    String? cariRef,
+    required double amount,
+    String? description,
+    DateTime? date,
+  }) async {
+    final res = await _dio.post('pos-tahsilat', data: {
+      'company': activeCompany,
+      'bankName': bankName,
+      'cariName': cariName,
+      'cariRef': cariRef,
+      'amount': amount,
+      'description': description,
+      'date': date?.toIso8601String(),
+    });
+    return res.data != null && res.data['ok'] == true;
+  }
+
+  Future<bool> deleteBankTransaction(dynamic ref) async {
+    final res = await _dio.post('banks/transactions/$ref/delete', data: {
+      'company': activeCompany,
+    });
+    return res.data != null && res.data['ok'] == true;
+  }
 }
