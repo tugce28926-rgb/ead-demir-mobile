@@ -38,18 +38,30 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
+    _apiService.setCompany(AppConstants.defaultCompany);
+
     try {
-      _apiService.setCompany(AppConstants.defaultCompany);
       final kpi = await _apiService.getKpiData();
-      final invs = await _apiService.getRecentInvoices();
-      final ways = await _apiService.getRecentWaybills();
-      setState(() {
-        _kpiData = kpi;
-        _recentInvoices = invs;
-        _recentWaybills = ways;
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _kpiData = kpi);
     } catch (e) {
+      debugPrint('KPI Error: $e');
+    }
+
+    try {
+      final invs = await _apiService.getRecentInvoices();
+      if (mounted) setState(() => _recentInvoices = invs);
+    } catch (e) {
+      debugPrint('Invoices Error: $e');
+    }
+
+    try {
+      final ways = await _apiService.getRecentWaybills();
+      if (mounted) setState(() => _recentWaybills = ways);
+    } catch (e) {
+      debugPrint('Waybills Error: $e');
+    }
+
+    if (mounted) {
       setState(() => _isLoading = false);
     }
   }
