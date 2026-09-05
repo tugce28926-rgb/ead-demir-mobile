@@ -9,7 +9,6 @@ class BankAccount {
   final String iban;
   final String accountType;
 
-  // Aliases for perfect compatibility across all screens
   String get bankName => name;
   double get bakiye => balance;
 
@@ -48,7 +47,7 @@ class BankAccount {
 }
 
 class BankTransaction {
-  final int? zirveRef;
+  final dynamic zirveRef;
   final DateTime date;
   final String cariName;
   final String description;
@@ -57,8 +56,10 @@ class BankTransaction {
   final String operationType;
   final double borc;
   final double alacak;
+  final bool isGiris;
+  final bool isPos;
+  final double eftFee;
 
-  // Aliases
   DateTime get tarih => date;
   String get aciklama => description;
 
@@ -72,6 +73,9 @@ class BankTransaction {
     required this.operationType,
     this.borc = 0.0,
     this.alacak = 0.0,
+    this.isGiris = true,
+    this.isPos = false,
+    this.eftFee = 0.0,
   });
 
   factory BankTransaction.fromJson(Map<String, dynamic> json) {
@@ -88,17 +92,23 @@ class BankTransaction {
     final bAlacak = (json['alacak'] ?? json['ALACAK'] ?? 0).toDouble();
     final desc = (json['aciklama'] ?? json['description'] ?? json['ACIKLAMA'] ?? '').toString();
     final cName = (json['cariName'] ?? json['CARI_AD'] ?? json['CARIADI'] ?? '').toString();
+    final eftFeeVal = (json['EFT_FEE'] ?? json['embeddedMasraf'] ?? json['GIDERTL'] ?? 0).toDouble();
+    
+    final bool isG = json['IS_GIRIS'] == true || json['isGiris'] == true || (json['CATEGORY'] == 'gelir') || (bBorc > 0 && bAlacak == 0);
 
     return BankTransaction(
-      zirveRef: json['zirveRef'] ?? json['HAREKETREF'],
+      zirveRef: json['zirveRef'] ?? json['HAREKETREF'] ?? json['REF'],
       date: dt,
       cariName: cName,
       description: desc,
       amount: bAmount > 0 ? bAmount : (bBorc > 0 ? bBorc : bAlacak),
-      category: bBorc > 0 ? 'gelir' : 'gider',
-      operationType: json['operationType'] ?? 'cari',
+      category: isG ? 'gelir' : 'gider',
+      operationType: (json['operationType'] ?? (json['IS_POS'] == true ? 'pos' : 'cari')).toString(),
       borc: bBorc,
       alacak: bAlacak,
+      isGiris: isG,
+      isPos: json['IS_POS'] == true || json['isPos'] == true,
+      eftFee: eftFeeVal,
     );
   }
 }
