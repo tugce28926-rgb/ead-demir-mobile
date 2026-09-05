@@ -25,32 +25,32 @@ class PdfViewerScreen extends StatefulWidget {
 
 class _PdfViewerScreenState extends State<PdfViewerScreen> {
   final ApiService _apiService = ApiService();
-  String? _htmlContent;
+  Uint8List? _pdfBytes;
   bool _isLoading = true;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadDocumentHtml();
+    _loadDocumentPdf();
   }
 
-  Future<void> _loadDocumentHtml() async {
+  Future<void> _loadDocumentPdf() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
     try {
-      final html = await _apiService.getDocumentHtml(widget.type, widget.documentNo);
-      if (html.isEmpty || html.contains('Hata Detayı') || html.contains('Görüntülenemedi')) {
+      final bytes = await _apiService.getDocumentPdf(widget.type, widget.documentNo);
+      if (bytes.isEmpty) {
         setState(() {
-          _error = 'Belge veritabanında bulunamadı veya açılamadı.';
+          _error = 'Belge veritabanında bulunamadı veya oluşturulamadı.';
           _isLoading = false;
         });
         return;
       }
       setState(() {
-        _htmlContent = html;
+        _pdfBytes = bytes;
         _isLoading = false;
       });
     } catch (e) {
@@ -62,13 +62,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   }
 
   Future<Uint8List> _buildPdf(PdfPageFormat format) async {
-    if (_htmlContent == null || _htmlContent!.isEmpty) {
-      return Uint8List(0);
-    }
-    return await Printing.convertHtml(
-      format: format,
-      html: _htmlContent!,
-    );
+    if (_pdfBytes == null) return Uint8List(0);
+    return _pdfBytes!;
   }
 
   @override
@@ -85,7 +80,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         backgroundColor: Colors.white,
         elevation: 0.5,
         actions: [
-          if (!_isLoading && _htmlContent != null)
+          if (!_isLoading && _pdfBytes != null)
             IconButton(
               icon: const Icon(Icons.share_rounded, color: AppTheme.primaryBlue),
               tooltip: 'Paylaş / Yazdır',
@@ -129,7 +124,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                         Text(_error!, style: const TextStyle(fontSize: 12, color: AppTheme.slate500), textAlign: TextAlign.center),
                         const SizedBox(height: 16),
                         ElevatedButton.icon(
-                          onPressed: _loadDocumentHtml,
+                          onPressed: _loadDocumentPdf,
                           icon: const Icon(Icons.refresh_rounded, size: 16),
                           label: const Text('Tekrar Dene'),
                           style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryBlue, foregroundColor: Colors.white),

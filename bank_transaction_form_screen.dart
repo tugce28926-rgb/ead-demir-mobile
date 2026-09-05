@@ -33,8 +33,11 @@ class _BankTransactionFormScreenState extends State<BankTransactionFormScreen> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _cariSearchController = TextEditingController();
+  final TextEditingController _eftFeeController = TextEditingController();
 
   List<CariSummary> _caris = [];
+  List<Map<String, dynamic>> _giders = [];
+  Map<String, dynamic>? _selectedGider;
   bool _isLoadingCaris = false;
   bool _isSubmitting = false;
 
@@ -47,15 +50,17 @@ class _BankTransactionFormScreenState extends State<BankTransactionFormScreen> {
     if (otherBanks.isNotEmpty) {
       _targetBank = otherBanks.first;
     }
-    _loadCaris();
+    _loadCarisAndGiders();
   }
 
-  Future<void> _loadCaris() async {
+  Future<void> _loadCarisAndGiders() async {
     setState(() => _isLoadingCaris = true);
     try {
       final list = await _apiService.getAllCaris();
+      final gList = await _apiService.getGiders();
       setState(() {
         _caris = list;
+        _giders = gList;
         _isLoadingCaris = false;
       });
     } catch (e) {
@@ -71,6 +76,8 @@ class _BankTransactionFormScreenState extends State<BankTransactionFormScreen> {
       return;
     }
 
+    final eftFee = double.tryParse(_eftFeeController.text.replaceAll(',', '.')) ?? 0.0;
+
     setState(() => _isSubmitting = true);
     try {
       final ok = await _apiService.createBankTransaction(
@@ -81,6 +88,8 @@ class _BankTransactionFormScreenState extends State<BankTransactionFormScreen> {
         cariName: _selectedCari?.cariAd,
         amount: amount,
         description: _descController.text,
+        expenseItem: _selectedGider?['GIDERKOD']?.toString(),
+        eftFee: eftFee,
       );
 
       setState(() => _isSubmitting = false);
@@ -257,6 +266,64 @@ class _BankTransactionFormScreenState extends State<BankTransactionFormScreen> {
               ),
             ),
             const SizedBox(height: 14),
+
+            // Gider ise Gider Kalemi
+            if (_operationType == 'gider') ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.slate200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('GİDER KALEMİ', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<Map<String, dynamic>>(
+                      value: _selectedGider,
+                      isExpanded: true,
+                      decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
+                      items: _giders.map((g) {
+                        return DropdownMenuItem(value: g, child: Text('${g['GIDERKOD']} - ${g['GIDERADI']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis));
+                      }).toList(),
+                      onChanged: (val) => setState(() => _selectedGider = val),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
+
+            // Virman veya Giden Havale ise EFT Ücreti
+            if (_operationType == 'virman' || _operationType == 'giden_havale') ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.slate200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('EFT/HAVALE MASRAFI (Varsa)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _eftFeeController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        hintText: '0,00',
+                        prefixText: '₺ ',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
 
             // Açıklama
             Container(
