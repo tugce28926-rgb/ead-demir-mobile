@@ -45,6 +45,52 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
     }
   }
 
+  Future<void> _deleteTransaction(BankTransaction t) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Kaydı Sil', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        content: Text(
+          '${t.cariName.isNotEmpty ? t.cariName : t.description} tutarındaki (${_currency.format(t.amount)}) işlemi Zirve ve sistemden silmek istediğinize emin misiniz?',
+          style: const TextStyle(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('İptal', style: TextStyle(color: AppTheme.slate500)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryRose,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Evet, Sil', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && t.zirveRef != null) {
+      try {
+        final ok = await _apiService.deleteBankTransaction(t.zirveRef);
+        if (ok) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(backgroundColor: AppTheme.primaryEmerald, content: Text('Kayıt başarıyla silindi.')),
+            );
+            _loadTransactions();
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Silme hatası: $e')));
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -62,7 +108,6 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(14),
                 children: [
-                  // Bank Header Card
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -89,7 +134,6 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  // 4 QUICK ACTION BUTTONS (Tahsilat, Ödeme, Virman, Gider)
                   Row(
                     children: [
                       _buildQuickAction('Tahsilat', Icons.arrow_downward_rounded, 'gelen_havale', AppTheme.primaryEmerald),
@@ -103,13 +147,25 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  const Text('SON HESAP HAREKETLERİ (CBK İŞLEMLERİ)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'İŞLEM GEÇMİŞİ',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF475569), letterSpacing: 0.3),
+                      ),
+                      Text(
+                        '${_transactions.length} Kayıt',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 8),
 
                   if (_transactions.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.slate200)),
                       child: const Center(child: Text('Kayıtlı hesap hareketi bulunamadı.', style: TextStyle(color: AppTheme.slate400, fontSize: 11))),
                     )
                   else
@@ -152,47 +208,191 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
   }
 
   Widget _buildTransactionCard(BankTransaction t) {
-    final isGiris = t.borc > 0;
-    final amount = isGiris ? t.borc : t.alacak;
+    final isGiris = t.isGiris;
+    final amount = t.amount > 0 ? t.amount : (isGiris ? t.borc : t.alacak);
+    final String badgeText = _getBadgeText(t);
+    final Color badgeBg = _getBadgeBg(t);
+    final Color badgeFg = _getBadgeFg(t);
+
+    final String mainTitle = t.cariName.isNotEmpty
+        ? t.cariName
+        : (t.operationType == 'virman' ? 'Banka Virmanı' : (t.description.isNotEmpty ? t.description : 'Banka Hareketi'));
+
+    final String subTitle = t.description.isNotEmpty ? t.description : 'Zirve Banka Fişi';
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.slate200),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  t.aciklama.isNotEmpty ? t.aciklama : (t.cariName.isNotEmpty ? t.cariName : 'Banka Hareketi'),
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.slate900),
-                  maxLines: 1,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                DateFormat('dd.MM.yyyy').format(t.tarih),
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  badgeText,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: badgeFg,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  mainTitle,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF0F172A),
+                    letterSpacing: -0.2,
+                  ),
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  DateFormat('dd.MM.yyyy').format(t.tarih),
-                  style: const TextStyle(fontSize: 9, color: AppTheme.slate400),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                (isGiris ? '+ ' : '- ') + _currency.format(amount > 0 ? amount : t.amount),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  color: isGiris ? const Color(0xFF059669) : const Color(0xFFE11D48),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
+          const SizedBox(height: 4),
+
           Text(
-            (isGiris ? '+ ' : '- ') + _currency.format(amount > 0 ? amount : t.amount),
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-              color: isGiris ? AppTheme.primaryEmerald : AppTheme.primaryRose,
+            subTitle,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF64748B),
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+
+          if (t.eftFee > 0) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFFFECACA)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.receipt_rounded, size: 11, color: Color(0xFFDC2626)),
+                  const SizedBox(width: 4),
+                  Text(
+                    'EFT Masrafı: ${_currency.format(t.eftFee)}',
+                    style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFFDC2626)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+
+          Align(
+            alignment: Alignment.centerRight,
+            child: InkWell(
+              onTap: () => _deleteTransaction(t),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1F2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFFFE4E6)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.delete_outline_rounded, size: 13, color: Color(0xFFE11D48)),
+                    SizedBox(width: 4),
+                    Text(
+                      'Kaydı Sil',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFE11D48),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  String _getBadgeText(BankTransaction t) {
+    if (t.isPos || t.operationType == 'pos') return 'POS Tahsilatı';
+    final op = t.operationType.toLowerCase();
+    if (op == 'virman') return 'Virman';
+    if (op == 'gider') return 'Gider';
+    if (op == 'gelen-havale' || op == 'tahsilat') return 'Gelen Havale';
+    if (op == 'giden-havale' || op == 'gonderilen-havale' || op == 'odeme') return 'Giden Havale';
+    return t.isGiris ? 'Gelen Havale' : 'Giden Havale';
+  }
+
+  Color _getBadgeBg(BankTransaction t) {
+    if (t.isPos || t.operationType == 'pos') return const Color(0xFFD1FAE5);
+    final op = t.operationType.toLowerCase();
+    if (op == 'virman') return const Color(0xFFDBEAFE);
+    if (op == 'gider') return const Color(0xFFFFE4E6);
+    if (t.isGiris) return const Color(0xFFD1FAE5);
+    return const Color(0xFFFFE4E6);
+  }
+
+  Color _getBadgeFg(BankTransaction t) {
+    if (t.isPos || t.operationType == 'pos') return const Color(0xFF059669);
+    final op = t.operationType.toLowerCase();
+    if (op == 'virman') return const Color(0xFF2563EB);
+    if (op == 'gider') return const Color(0xFFE11D48);
+    if (t.isGiris) return const Color(0xFF059669);
+    return const Color(0xFFE11D48);
   }
 }
