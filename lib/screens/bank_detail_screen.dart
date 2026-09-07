@@ -21,12 +21,11 @@ class BankDetailScreen extends StatefulWidget {
 
 class _BankDetailScreenState extends State<BankDetailScreen> {
   final ApiService _apiService = ApiService();
-  final NumberFormat _currency = NumberFormat.currency(locale: 'tr_TR', symbol: '₺');
-  final DateFormat _dateFormat = DateFormat('dd.MM.yyyy HH:mm');
+  final NumberFormat _currency = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 2);
+  final DateFormat _dateFormat = DateFormat('dd.MM.yyyy');
 
   List<BankTransaction> _transactions = [];
   bool _isLoading = true;
-  String _activeFilter = 'all';
 
   @override
   void initState() {
@@ -51,62 +50,46 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('İşlemi Sil', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text('${t.cariName.isNotEmpty ? t.cariName : t.description} tutarlı işlemi Zirveden silmek istediğinize emin misiniz?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Kaydı Sil', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        content: Text(
+          '${t.cariName.isNotEmpty ? t.cariName : t.description} tutarındaki (${_currency.format(t.amount)}) işlemi Zirve ve sistemden silmek istediğinize emin misiniz?',
+          style: const TextStyle(fontSize: 13),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('İptal'),
+            child: const Text('İptal', style: TextStyle(color: AppTheme.slate500)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRose),
-            child: const Text('Evet, Sil', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryRose,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Evet, Sil', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
 
-    if (confirm == true) {
-      final ok = await _apiService.deleteBankTransaction(t.hareketRef);
-      if (ok) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(backgroundColor: AppTheme.primaryEmerald, content: Text('İşlem Zirveden başarıyla silindi.')),
-          );
-          _loadTransactions();
+    if (confirm == true && t.zirveRef != null) {
+      try {
+        final ok = await _apiService.deleteBankTransaction(t.zirveRef);
+        if (ok) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(backgroundColor: AppTheme.primaryEmerald, content: Text('Kayıt başarıyla silindi.')),
+            );
+            _loadTransactions();
+          }
         }
-      } else {
+      } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(backgroundColor: AppTheme.primaryRose, content: Text('İşlem silinemedi.')),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Silme hatası: $e')));
         }
       }
     }
-  }
-
-  void _openTransactionForm(String type) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => BankTransactionFormScreen(
-          sourceBank: widget.bank,
-          allBanks: widget.allBanks,
-          initialType: type,
-        ),
-      ),
-    );
-    if (result == true) {
-      _loadTransactions();
-    }
-  }
-
-  List<BankTransaction> get _filteredTransactions {
-    if (_activeFilter == 'gelir') return _transactions.where((t) => t.isGiris && !t.isPos).toList();
-    if (_activeFilter == 'gider') return _transactions.where((t) => !t.isGiris).toList();
-    if (_activeFilter == 'pos') return _transactions.where((t) => t.isPos || t.operationType == 'pos').toList();
-    return _transactions;
   }
 
   @override
@@ -114,175 +97,114 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
     return Scaffold(
       backgroundColor: AppTheme.slate50,
       appBar: AppBar(
+        title: Text(widget.bank.bankName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppTheme.slate900, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.bank.bankName,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.slate900),
-            ),
-            Text(
-              widget.bank.iban.isNotEmpty ? widget.bank.iban : widget.bank.accountType,
-              style: const TextStyle(fontSize: 10, color: AppTheme.slate400, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
       ),
-      body: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: AppTheme.slate200)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('HESAP BAKİYESİ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: widget.bank.bakiye >= 0 ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        widget.bank.bakiye >= 0 ? 'Artıda' : 'Ekside',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          color: widget.bank.bakiye >= 0 ? AppTheme.primaryEmerald : AppTheme.primaryRose,
-                        ),
-                      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryBlue))
+          : RefreshIndicator(
+              onRefresh: _loadTransactions,
+              color: AppTheme.primaryBlue,
+              child: ListView(
+                padding: const EdgeInsets.all(14),
+                children: [
+                  // Bank Header Card
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFF0F172A), Color(0xFF1E293B)]),
+                      borderRadius: BorderRadius.circular(18),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _currency.format(widget.bank.bakiye),
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: widget.bank.bakiye >= 0 ? AppTheme.slate900 : AppTheme.primaryRose,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.bank.bankName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+                        const SizedBox(height: 4),
+                        if (widget.bank.iban.isNotEmpty)
+                          Text('IBAN: ${widget.bank.iban}', style: const TextStyle(fontSize: 10, color: AppTheme.slate300, fontFamily: 'monospace')),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('GÜNCEL BAKİYE:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
+                            Text(_currency.format(widget.bank.bakiye), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
-                Row(
-                  children: [
-                    _buildActionButton('Virman', Icons.swap_horiz_rounded, const Color(0xFF2563EB), () => _openTransactionForm('virman')),
-                    const SizedBox(width: 8),
-                    _buildActionButton('Gelen Havale', Icons.arrow_downward_rounded, AppTheme.primaryEmerald, () => _openTransactionForm('gelen_havale')),
-                    const SizedBox(width: 8),
-                    _buildActionButton('Giden Havale', Icons.arrow_upward_rounded, AppTheme.primaryRose, () => _openTransactionForm('giden_havale')),
-                    const SizedBox(width: 8),
-                    _buildActionButton('Gider', Icons.receipt_long_rounded, const Color(0xFFD97706), () => _openTransactionForm('gider')),
-                  ],
-                ),
-              ],
-            ),
-          ),
+                  // 4 QUICK ACTION BUTTONS (Tahsilat, Ödeme, Virman, Gider)
+                  Row(
+                    children: [
+                      _buildQuickAction('Tahsilat', Icons.arrow_downward_rounded, 'gelen_havale', AppTheme.primaryEmerald),
+                      const SizedBox(width: 6),
+                      _buildQuickAction('Ödeme', Icons.arrow_upward_rounded, 'giden_havale', AppTheme.primaryRose),
+                      const SizedBox(width: 6),
+                      _buildQuickAction('Virman', Icons.swap_horiz_rounded, 'virman', AppTheme.primaryBlue),
+                      const SizedBox(width: 6),
+                      _buildQuickAction('Gider', Icons.receipt_long_rounded, 'gider', AppTheme.primaryAmber),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
 
-          Container(
-            height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                _buildFilterChip('all', 'Tüm Hareketler (${_transactions.length})'),
-                const SizedBox(width: 6),
-                _buildFilterChip('pos', 'POS Çekimleri'),
-                const SizedBox(width: 6),
-                _buildFilterChip('gelir', 'Gelenler / Tahsilat'),
-                const SizedBox(width: 6),
-                _buildFilterChip('gider', 'Gidenler / Ödeme'),
-              ],
-            ),
-          ),
-
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredTransactions.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Bu filtreye uygun hareket bulunamadı.',
-                          style: TextStyle(color: AppTheme.slate400, fontWeight: FontWeight.bold),
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _loadTransactions,
-                        child: ListView.separated(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _filteredTransactions.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
-                          itemBuilder: (ctx, i) => _buildTransactionCard(_filteredTransactions[i]),
-                        ),
+                  // İŞLEM GEÇMİŞİ
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'İŞLEM GEÇMİŞİ',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF475569), letterSpacing: 0.3),
                       ),
-          ),
-        ],
-      ),
+                      Text(
+                        '${_transactions.length} Kayıt',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  if (_transactions.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.slate200)),
+                      child: const Center(child: Text('Kayıtlı hesap hareketi bulunamadı.', style: TextStyle(color: AppTheme.slate400, fontSize: 11))),
+                    )
+                  else
+                    ..._transactions.map((t) => _buildTransactionCard(t)),
+                ],
+              ),
+            ),
     );
   }
 
-  Widget _buildActionButton(String label, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildQuickAction(String title, IconData icon, String type, Color color) {
     return Expanded(
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => BankTransactionFormScreen(sourceBank: widget.bank, allBanks: widget.allBanks, initialType: type),
+            ),
+          ).then((_) => _loadTransactions());
+        },
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withOpacity(0.2)),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.3)),
           ),
           child: Column(
             children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(height: 3),
-              Text(
-                label,
-                style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: color),
-                textAlign: TextAlign.center,
-              ),
+              Icon(icon, color: color, size: 18),
+              const SizedBox(height: 4),
+              Text(title, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: color)),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String key, String label) {
-    final isSelected = _activeFilter == key;
-    return InkWell(
-      onTap: () => setState(() => _activeFilter = key),
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryBlue : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isSelected ? AppTheme.primaryBlue : AppTheme.slate200),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: isSelected ? Colors.white : AppTheme.slate600,
-            ),
           ),
         ),
       ),
@@ -291,16 +213,28 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
 
   Widget _buildTransactionCard(BankTransaction t) {
     final isGiris = t.isGiris;
+    final amount = t.amount > 0 ? t.amount : (isGiris ? t.borc : t.alacak);
+    final String badgeText = _getBadgeText(t);
+    final Color badgeBg = _getBadgeBg(t);
+    final Color badgeFg = _getBadgeFg(t);
+
+    final String mainTitle = t.cariName.isNotEmpty
+        ? t.cariName
+        : (t.operationType == 'virman' ? 'Banka Virmanı' : (t.description.isNotEmpty ? t.description : 'Banka Hareketi'));
+
+    final String subTitle = t.description.isNotEmpty ? t.description : 'Zirve Banka Fişi';
+
     return Container(
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.slate200),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.02),
-            blurRadius: 8,
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -308,59 +242,71 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 1. Satır: Tarih (Sol) - İşlem Türü Rozeti (Sağ)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: _getOpTypeBgColor(t),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      _getOpTypeLabel(t),
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        color: _getOpTypeTextColor(t),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    t.tarih != null ? _dateFormat.format(t.tarih!) : '',
-                    style: const TextStyle(fontSize: 10, color: AppTheme.slate400, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
               Text(
-                (isGiris ? '+ ' : '- ') + _currency.format(t.tutar),
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  color: isGiris ? AppTheme.primaryEmerald : AppTheme.primaryRose,
+                _dateFormat.format(t.date),
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  badgeText,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: badgeFg,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
 
-          if (t.cariName.isNotEmpty) ...[
-            Text(
-              t.cariName,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
-                color: AppTheme.slate900,
+          // 2. Satır: Ana Başlık (Cari/Banka/Gider Adı) (Sol) - Tutar ₺ (Sağ)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  mainTitle,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF0F172A),
+                    letterSpacing: -0.2,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-          ],
+              const SizedBox(width: 8),
+              Text(
+                (isGiris ? '+ ' : '- ') + _currency.format(amount > 0 ? amount : t.amount),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  color: isGiris ? const Color(0xFF059669) : const Color(0xFFE11D48),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
 
+          // 3. Satır: Açıklama / Dekont Notu
           Text(
-            t.description,
+            subTitle,
             style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w600,
@@ -370,7 +316,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
             overflow: TextOverflow.ellipsis,
           ),
 
-          // SADECE GİDEN VE GERÇEK MASRAFI OLAN İŞLEMLERDE GÖRÜNÜR
+          // Varsa EFT / Havale Masrafı Rozeti
           if (!t.isGiris && !t.isPos && t.eftFee > 0 && (t.operationType == 'giden_havale' || t.operationType == 'virman' || t.operationType == 'odeme' || t.operationType == 'gider')) ...[
             const SizedBox(height: 6),
             Container(
@@ -395,6 +341,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
           ],
           const SizedBox(height: 8),
 
+          // 4. Satır: Kaydı Sil Butonu
           Align(
             alignment: Alignment.centerRight,
             child: InkWell(
@@ -430,26 +377,31 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
     );
   }
 
-  String _getOpTypeLabel(BankTransaction t) {
+  String _getBadgeText(BankTransaction t) {
     if (t.isPos || t.operationType == 'pos') return 'POS Tahsilatı';
-    if (t.operationType == 'virman') return 'Virman';
-    if (t.operationType == 'gelen_havale' || (t.isGiris && t.operationType == 'gelir')) return 'Gelen Havale';
-    if (t.operationType == 'giden_havale') return 'Giden Havale';
-    if (t.operationType == 'gider') return 'Gider';
-    return t.isGiris ? 'Giriş' : 'Çıkış';
+    final op = t.operationType.toLowerCase();
+    if (op == 'virman') return 'Virman';
+    if (op == 'gider') return 'Gider';
+    if (op == 'gelen-havale' || op == 'tahsilat') return 'Gelen Havale';
+    if (op == 'giden-havale' || op == 'gonderilen-havale' || op == 'odeme') return 'Giden Havale';
+    return t.isGiris ? 'Gelen Havale' : 'Giden Havale';
   }
 
-  Color _getOpTypeBgColor(BankTransaction t) {
+  Color _getBadgeBg(BankTransaction t) {
     if (t.isPos || t.operationType == 'pos') return const Color(0xFFD1FAE5);
-    if (t.operationType == 'virman') return const Color(0xFFDBEAFE);
+    final op = t.operationType.toLowerCase();
+    if (op == 'virman') return const Color(0xFFDBEAFE);
+    if (op == 'gider') return const Color(0xFFFFE4E6);
     if (t.isGiris) return const Color(0xFFD1FAE5);
-    return const Color(0xFFFEE2E2);
+    return const Color(0xFFFFE4E6);
   }
 
-  Color _getOpTypeTextColor(BankTransaction t) {
+  Color _getBadgeFg(BankTransaction t) {
     if (t.isPos || t.operationType == 'pos') return const Color(0xFF059669);
-    if (t.operationType == 'virman') return const Color(0xFF2563EB);
+    final op = t.operationType.toLowerCase();
+    if (op == 'virman') return const Color(0xFF2563EB);
+    if (op == 'gider') return const Color(0xFFE11D48);
     if (t.isGiris) return const Color(0xFF059669);
-    return const Color(0xFFDC2626);
+    return const Color(0xFFE11D48);
   }
 }
