@@ -22,13 +22,25 @@ class KpiData {
   });
 
   factory KpiData.fromJson(Map<String, dynamic> json) {
+    double parseDouble(dynamic v) {
+      if (v == null) return 0.0;
+      if (v is num) return v.toDouble();
+      return double.tryParse(v.toString()) ?? 0.0;
+    }
+    int parseInt(dynamic v) {
+      if (v == null) return 0;
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      return int.tryParse(v.toString()) ?? 0;
+    }
+
     return KpiData(
-      bugunFaturaTutar: (json['bugunFaturaTutar'] ?? json['bugunFatura'] ?? 0).toDouble(),
-      bugunFaturaAdet: json['bugunFaturaAdet'] ?? 0,
-      bugunSevkKg: (json['bugunSevkKg'] ?? json['bugunSevk'] ?? 0).toDouble(),
-      bugunSevkAdet: json['bugunSevkAdet'] ?? 0,
-      musteriBorclari: (json['musteriBorclari'] ?? json['toplamAlacak'] ?? 0).toDouble(),
-      tedarikciBorcu: (json['tedarikciBorcu'] ?? json['toplamBorc'] ?? 0).toDouble(),
+      bugunFaturaTutar: parseDouble(json['bugunFaturaTutar'] ?? json['bugunFatura']),
+      bugunFaturaAdet: parseInt(json['bugunFaturaAdet']),
+      bugunSevkKg: parseDouble(json['bugunSevkKg'] ?? json['bugunSevk']),
+      bugunSevkAdet: parseInt(json['bugunSevkAdet']),
+      musteriBorclari: parseDouble(json['musteriBorclari'] ?? json['toplamAlacak']),
+      tedarikciBorcu: parseDouble(json['tedarikciBorcu'] ?? json['toplamBorc']),
     );
   }
 }
