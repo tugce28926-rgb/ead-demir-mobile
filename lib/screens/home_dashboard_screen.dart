@@ -6,6 +6,7 @@ import '../models/kpi_model.dart';
 import '../models/fatura_irsaliye_model.dart';
 import '../services/api_service.dart';
 import '../widgets/bottom_nav_bar.dart';
+import 'login_screen.dart';
 import 'bank_list_screen.dart';
 import 'musteriler_screen.dart';
 import 'irsaliye_screen.dart';
@@ -82,6 +83,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final user = ApiService.currentUser;
+    final initials = user.length >= 2 ? user.substring(0, 2) : (user.isNotEmpty ? user : 'EA');
+
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
@@ -106,18 +110,18 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'EAD DEMİR',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.slate900),
               ),
               Row(
                 children: [
-                  Text('●', style: TextStyle(fontSize: 8, color: Color(0xFF10B981))),
-                  SizedBox(width: 4),
-                  Text('Zirve Çevrimiçi', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+                  const Text('●', style: TextStyle(fontSize: 8, color: Color(0xFF10B981))),
+                  const SizedBox(width: 4),
+                  Text('Zirve: $user', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
                 ],
               ),
             ],
@@ -134,14 +138,50 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           ),
           tooltip: 'Yenile',
         ),
-        Padding(
-          padding: const EdgeInsets.only(right: 14, left: 4),
-          child: Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(color: AppTheme.slate900, borderRadius: BorderRadius.circular(10)),
-            child: const Center(
-              child: Text('TU', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+        PopupMenuButton<String>(
+          offset: const Offset(0, 45),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          onSelected: (val) {
+            if (val == 'logout') {
+              ApiService.logout();
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              );
+            }
+          },
+          itemBuilder: (ctx) => [
+            PopupMenuItem(
+              enabled: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Aktif Kullanıcı: ' + user, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.slate900)),
+                  const Text('Zirve Kayıt Yetkisi Açık', style: TextStyle(fontSize: 10, color: AppTheme.slate400)),
+                  const Divider(),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'logout',
+              child: Row(
+                children: [
+                  Icon(Icons.logout_rounded, color: AppTheme.primaryRose, size: 18),
+                  SizedBox(width: 8),
+                  Text('Çıkış Yap', style: TextStyle(color: AppTheme.primaryRose, fontWeight: FontWeight.bold, fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+          child: Padding(
+            padding: const EdgeInsets.only(right: 14, left: 4),
+            child: Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(color: AppTheme.slate900, borderRadius: BorderRadius.circular(10)),
+              child: Center(
+                child: Text(initials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+              ),
             ),
           ),
         ),
@@ -182,315 +222,209 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF312E81)],
+                colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 10, offset: const Offset(0, 4)),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
               ],
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Finans & Yönetim Portalı', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.slate300)),
-                    Text(
-                      'EAD_DEMIR_2026T',
-                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF6EE7B7)),
+                    const Text('GÜNCEL FİNANS ÖZETİ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate300, letterSpacing: 0.5)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Bu Ay: ${_kgFormat.format(_kpiData?.toplamSatisKg ?? 0)} KG',
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
-                SizedBox(height: 6),
-                Text(
-                  'EAD DEMİR ÇELİK',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('TOPLAM ALACAK', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
+                          const SizedBox(height: 2),
+                          Text(
+                            _currencyFormat.format(_kpiData?.toplamAlacak ?? 0),
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF34D399)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('TOPLAM BORÇ', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
+                          const SizedBox(height: 2),
+                          Text(
+                            _currencyFormat.format(_kpiData?.toplamBorc ?? 0),
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFFF87171)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 2),
-                Text(
-                  'Zirve e-Fatura, e-İrsaliye ve Banka Yönetim Sistemi',
-                  style: TextStyle(fontSize: 10, color: AppTheme.slate400),
+                const SizedBox(height: 10),
+                const Divider(color: Color(0xFF334155), height: 1),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('NET NAKİT / BANKA:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate300)),
+                    Text(
+                      _currencyFormat.format(_kpiData?.bankaNetBakiye ?? 0),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Segment Selector (Faturalar / İrsaliyeler)
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppTheme.slate200),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _activeTab = 'fat'),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _activeTab == 'fat' ? AppTheme.primaryBlue : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Son Faturalar',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            color: _activeTab == 'fat' ? Colors.white : AppTheme.slate600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _activeTab = 'irs'),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _activeTab == 'irs' ? AppTheme.primaryBlue : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Son İrsaliyeler',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            color: _activeTab == 'irs' ? Colors.white : AppTheme.slate600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 12),
 
-          // 2x2 Grid: Bugün Fatura & Bugün Sevk
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () => setState(() => _currentTabIndex = 3),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppTheme.slate200),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('BUGÜN FATURA', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
-                            Text('📄', style: TextStyle(fontSize: 12)),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _currencyFormat.format(_kpiData?.bugunFaturaTutar ?? 0),
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.slate900),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text('${_kpiData?.bugunFaturaAdet ?? 0} Adet Kesildi', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-
-              Expanded(
-                child: InkWell(
-                  onTap: () => setState(() => _currentTabIndex = 2),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppTheme.slate200),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('BUGÜN SEVK', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
-                            Text('🚚', style: TextStyle(fontSize: 12)),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '${_kgFormat.format(_kpiData?.bugunSevkKg ?? 0)} KG',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.slate900),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text('${_kpiData?.bugunSevkAdet ?? 0} İrsaliye Çıktı', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          // Müşteri Borçları
-          InkWell(
-            onTap: () => setState(() => _currentTabIndex = 1),
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.slate200),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF1F2),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFFFE4E6)),
-                        ),
-                        child: const Center(child: Text('👥', style: TextStyle(fontSize: 18))),
-                      ),
-                      const SizedBox(width: 10),
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('MÜŞTERİ BORÇLARI', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
-                          Text('Toplam Alacağımız', style: TextStyle(fontSize: 10, color: AppTheme.slate400, fontWeight: FontWeight.w500)),
-                        ],
-                      ),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        _currencyFormat.format(_kpiData?.musteriBorclari ?? 1718285.87),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.primaryRose),
-                      ),
-                      const SizedBox(height: 2),
-                      const Row(
-                        children: [
-                          Text('İncele', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryRose)),
-                          Icon(Icons.chevron_right_rounded, size: 12, color: AppTheme.primaryRose),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Son İşlemler
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('SON İŞLEMLER', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
-              Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(color: AppTheme.slate200, borderRadius: BorderRadius.circular(10)),
-                child: Row(
-                  children: [
-                    _buildTabButton('Faturalar', 'fat'),
-                    _buildTabButton('İrsaliyeler', 'irs'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
+          // Liste Görünümü
           if (_activeTab == 'fat') ...[
             if (_recentInvoices.isEmpty)
-              _buildEmptyState('Henüz kayıtlı fatura bulunamadı.')
+              _buildEmptyPlaceholder('Kayıtlı fatura bulunamadı.')
             else
               ..._recentInvoices.map((inv) => _buildInvoiceCard(inv)),
           ] else ...[
             if (_recentWaybills.isEmpty)
-              _buildEmptyState('Henüz kayıtlı irsaliye bulunamadı.')
+              _buildEmptyPlaceholder('Kayıtlı irsaliye bulunamadı.')
             else
-              ..._recentWaybills.map((way) => _buildWaybillCard(way)),
+              ..._recentWaybills.map((w) => _buildWaybillCard(w)),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildTabButton(String label, String tabKey) {
-    final isSelected = _activeTab == tabKey;
-    return GestureDetector(
-      onTap: () => setState(() => _activeTab = tabKey),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
-            color: isSelected ? AppTheme.slate900 : AppTheme.slate500,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildInvoiceCard(RecentInvoice inv) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppTheme.slate200),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  inv.cariAd,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.slate900),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      '${inv.evrakRef} • ' + DateFormat('dd/MM').format(inv.date),
-                      style: const TextStyle(fontSize: 10, color: AppTheme.slate400, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: inv.tur == 'e-Fatura' ? const Color(0xFFEFF6FF) : const Color(0xFFFAF5FF),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        inv.tur,
-                        style: TextStyle(
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                          color: inv.tur == 'e-Fatura' ? AppTheme.primaryBlue : AppTheme.primaryPurple,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _currencyFormat.format(inv.tutar),
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.slate900),
+                inv.evrakNo,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.slate500),
               ),
-              const SizedBox(height: 4),
-              InkWell(
-                onTap: () {
-                  setState(() => _currentTabIndex = 3);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFECFDF5),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFA7F3D0)),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.print_rounded, size: 10, color: AppTheme.primaryEmerald),
-                      SizedBox(width: 3),
-                      Text('PDF', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: AppTheme.primaryEmerald)),
-                    ],
-                  ),
-                ),
+              Text(
+                inv.tarih != null ? DateFormat('dd.MM.yyyy').format(inv.tarih!) : '',
+                style: const TextStyle(fontSize: 10, color: AppTheme.slate400),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            inv.cariUnvan,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.slate900),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${_kgFormat.format(inv.miktar)} KG',
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.slate600),
+              ),
+              Text(
+                _currencyFormat.format(inv.genelToplam),
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.primaryBlue),
               ),
             ],
           ),
@@ -499,64 +433,49 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     );
   }
 
-  Widget _buildWaybillCard(RecentWaybill way) {
+  Widget _buildWaybillCard(RecentWaybill w) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppTheme.slate200),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  way.cariAd,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.slate900),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${way.evrakRef} • ' + DateFormat('dd/MM').format(way.date),
-                  style: const TextStyle(fontSize: 10, color: AppTheme.slate400, fontWeight: FontWeight.w500),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${_kgFormat.format(way.miktarKg)} KG',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.primaryPurple),
+                w.irsaliyeNo,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.slate500),
               ),
-              const SizedBox(height: 4),
-              InkWell(
-                onTap: () {
-                  setState(() => _currentTabIndex = 2);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFECFDF5),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFA7F3D0)),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.print_rounded, size: 10, color: AppTheme.primaryEmerald),
-                      SizedBox(width: 3),
-                      Text('PDF', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: AppTheme.primaryEmerald)),
-                    ],
-                  ),
-                ),
+              Text(
+                w.tarih != null ? DateFormat('dd.MM.yyyy').format(w.tarih!) : '',
+                style: const TextStyle(fontSize: 10, color: AppTheme.slate400),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            w.cariUnvan,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.slate900),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${_kgFormat.format(w.miktar)} KG',
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.slate600),
+              ),
+              Text(
+                w.durum,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryEmerald),
               ),
             ],
           ),
@@ -565,16 +484,16 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     );
   }
 
-  Widget _buildEmptyState(String msg) {
+  Widget _buildEmptyPlaceholder(String text) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppTheme.slate200),
       ),
       child: Center(
-        child: Text(msg, style: const TextStyle(fontSize: 11, color: AppTheme.slate400, fontWeight: FontWeight.w500)),
+        child: Text(text, style: const TextStyle(fontSize: 11, color: AppTheme.slate400)),
       ),
     );
   }
