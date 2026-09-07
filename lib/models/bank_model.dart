@@ -61,7 +61,9 @@ class BankTransaction {
   final bool isPos;
   final double eftFee;
 
-  // Aliases
+  // Aliases for 100% build compatibility
+  dynamic get hareketRef => zirveRef;
+  double get tutar => amount;
   DateTime get tarih => date;
   String get aciklama => description;
 
