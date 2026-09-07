@@ -35,15 +35,18 @@ class RecentInvoice {
       } catch (_) {}
     }
 
+    final numRaw = json['EVRAK_TUTARI'] ?? json['tutar'] ?? json['genelToplam'] ?? json['GENELTOPLAM'] ?? 0;
+    final tutarVal = numRaw is num ? numRaw.toDouble() : (double.tryParse(numRaw.toString()) ?? 0.0);
+
     return RecentInvoice(
-      id: json['EVRAK_ID'] ?? json['id'] ?? json['SIRANO'] ?? 0,
-      evrakRef: json['EVRAK_REF'] ?? json['evrakRef'] ?? json['evrakNo'] ?? json['EVRAKNO'] ?? '',
+      id: int.tryParse((json['EVRAK_ID'] ?? json['id'] ?? json['SIRANO'] ?? 0).toString()) ?? 0,
+      evrakRef: (json['EVRAK_REF'] ?? json['evrakRef'] ?? json['evrakNo'] ?? json['EVRAKNO'] ?? '').toString(),
       date: dt,
-      tutar: (json['EVRAK_TUTARI'] ?? json['tutar'] ?? json['genelToplam'] ?? json['GENELTOPLAM'] ?? 0).toDouble(),
-      cariAd: json['CARI_AD'] ?? json['cariAd'] ?? json['cariUnvan'] ?? json['CARIADI'] ?? '',
+      tutar: tutarVal,
+      cariAd: (json['CARI_AD'] ?? json['cariAd'] ?? json['cariUnvan'] ?? json['CARIADI'] ?? '').toString(),
       tur: (json['FATURA_TURU'] ?? json['tur'] ?? 'e-Fatura').toString(),
-      isGibGonderildi: json['IS_GIB_GONDERILDI'] == 1 || json['isGibGonderildi'] == true,
-      isIptal: json['IS_IPTAL'] == 1 || json['isIptal'] == true,
+      isGibGonderildi: json['IS_GIB_GONDERILDI'] == 1 || json['isGibGonderildi'] == true || json['IS_GIB_GONDERILDI'] == '1',
+      isIptal: json['IS_IPTAL'] == 1 || json['isIptal'] == true || json['IS_IPTAL'] == '1',
     );
   }
 }
@@ -94,16 +97,19 @@ class RecentWaybill {
                   json['FATURA_DURUM'] == 'Faturalandı' || 
                   fatNo.trim().isNotEmpty;
 
+    final miktarRaw = json['TOPLAM_MIKTAR'] ?? json['miktarKg'] ?? json['miktar'] ?? 0;
+    final miktarVal = miktarRaw is num ? miktarRaw.toDouble() : (double.tryParse(miktarRaw.toString()) ?? 0.0);
+
     return RecentWaybill(
-      id: json['EVRAK_ID'] ?? json['id'] ?? json['SIRANO'] ?? 0,
-      evrakRef: json['EVRAK_REF'] ?? json['evrakRef'] ?? json['irsaliyeNo'] ?? json['EVRAKNO'] ?? '',
+      id: int.tryParse((json['EVRAK_ID'] ?? json['id'] ?? json['SIRANO'] ?? 0).toString()) ?? 0,
+      evrakRef: (json['EVRAK_REF'] ?? json['evrakRef'] ?? json['irsaliyeNo'] ?? json['EVRAKNO'] ?? '').toString(),
       date: dt,
-      cariAd: json['CARI_AD'] ?? json['cariAd'] ?? json['cariUnvan'] ?? json['CARIADI'] ?? '',
-      miktarKg: (json['TOPLAM_MIKTAR'] ?? json['miktarKg'] ?? json['miktar'] ?? 0).toDouble(),
+      cariAd: (json['CARI_AD'] ?? json['cariAd'] ?? json['cariUnvan'] ?? json['CARIADI'] ?? '').toString(),
+      miktarKg: miktarVal,
       faturaNo: fatNo,
       isFaturalandi: isFat,
-      isGibGonderildi: json['IS_GIB_GONDERILDI'] == 1 || json['isGibGonderildi'] == true,
-      isIptal: json['IS_IPTAL'] == 1 || json['isIptal'] == true,
+      isGibGonderildi: json['IS_GIB_GONDERILDI'] == 1 || json['isGibGonderildi'] == true || json['IS_GIB_GONDERILDI'] == '1',
+      isIptal: json['IS_IPTAL'] == 1 || json['isIptal'] == true || json['IS_IPTAL'] == '1',
     );
   }
 }
