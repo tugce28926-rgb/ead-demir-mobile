@@ -12,12 +12,10 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final ApiService _apiService = ApiService();
-  final TextEditingController _usernameController = TextEditingController(text: 'TUĞÇE');
-  final TextEditingController _passwordController = TextEditingController(text: '8520');
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
-
-  final List<String> _quickUsers = ['TUĞÇE', 'TALHA', 'FERDİ'];
 
   @override
   void dispose() {
@@ -34,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: AppTheme.primaryRose,
-          content: Text('Lütfen kullanıcı adı ve şifre giriniz.'),
+          content: Text('Lütfen kullanıcı adı ve şifrenizi giriniz.'),
         ),
       );
       return;
@@ -51,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppTheme.primaryEmerald,
-            content: Text('Hoş geldiniz, ${res['username']}!'),
+            content: Text('Giriş başarılı. Hoş geldiniz, ${res['username']}!'),
             duration: const Duration(seconds: 2),
           ),
         );
@@ -64,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppTheme.primaryRose,
-            content: Text(res['error'] ?? 'Giriş başarısız!'),
+            content: Text(res['error'] ?? 'Hatalı kullanıcı adı veya şifre!'),
           ),
         );
       }
@@ -91,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo & Başlık Kutusu
+                // EAD Logo
                 Container(
                   width: 72,
                   height: 72,
@@ -122,7 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
 
                 const Text(
                   'EAD DEMİR & ÇELİK',
@@ -163,59 +161,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Kullanıcı Seçimi',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.slate500,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Hızlı Kullanıcı Butonları
-                      Row(
-                        children: _quickUsers.map((user) {
-                          final isSelected = _usernameController.text == user;
-                          return Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 3),
-                              child: InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    _usernameController.text = user;
-                                  });
-                                },
-                                borderRadius: BorderRadius.circular(12),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: isSelected ? AppTheme.primaryBlue : AppTheme.slate100,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isSelected ? AppTheme.primaryBlue : AppTheme.slate200,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      user,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w900,
-                                        color: isSelected ? Colors.white : AppTheme.slate700,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Kullanıcı Adı Input
-                      const Text(
                         'KULLANICI ADI',
                         style: TextStyle(
                           fontSize: 10,
@@ -229,7 +174,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         textCapitalization: TextCapitalization.characters,
                         style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.slate900),
                         decoration: InputDecoration(
-                          hintText: 'Kullanıcı adı girin...',
+                          hintText: 'Kullanıcı adınızı giriniz...',
+                          hintStyle: const TextStyle(color: AppTheme.slate400, fontSize: 13),
                           prefixIcon: const Icon(Icons.person_outline_rounded, color: AppTheme.primaryBlue, size: 20),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -237,7 +183,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Şifre Input
                       const Text(
                         'GİRİŞ ŞİFRESİ',
                         style: TextStyle(
@@ -253,7 +198,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         keyboardType: TextInputType.number,
                         style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.slate900),
                         decoration: InputDecoration(
-                          hintText: 'Şifrenizi girin...',
+                          hintText: 'Şifrenizi giriniz...',
+                          hintStyle: const TextStyle(color: AppTheme.slate400, fontSize: 13),
                           prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppTheme.primaryBlue, size: 20),
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -271,7 +217,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Giriş Butonu
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -304,12 +249,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 24),
-
-                const Text(
-                  'v2.4.0 • EAD Demir Zirve Entegrasyonu',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.slate400),
                 ),
               ],
             ),
