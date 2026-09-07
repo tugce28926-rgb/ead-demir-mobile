@@ -327,7 +327,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
                 border: Border.all(color: const Color(0xFFFECACA)),
               ),
               child: Row(
-                mainAxisSize: dynamic,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.receipt_rounded, size: 11, color: Color(0xFFDC2626)),
                   const SizedBox(width: 4),
