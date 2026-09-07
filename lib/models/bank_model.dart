@@ -9,6 +9,7 @@ class BankAccount {
   final String iban;
   final String accountType;
 
+  // Aliases for perfect compatibility across all screens
   String get bankName => name;
   double get bakiye => balance;
 
@@ -60,6 +61,7 @@ class BankTransaction {
   final bool isPos;
   final double eftFee;
 
+  // Aliases
   DateTime get tarih => date;
   String get aciklama => description;
 
