@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme.dart';
+import 'services/api_service.dart';
+import 'screens/login_screen.dart';
 import 'screens/home_dashboard_screen.dart';
 
 void main() async {
@@ -19,7 +20,7 @@ class EadMobileApp extends StatelessWidget {
       title: 'EAD Demir',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const HomeDashboardScreen(),
+      home: ApiService.isLoggedIn ? const HomeDashboardScreen() : const LoginScreen(),
     );
   }
 }
