@@ -32,6 +32,7 @@ class _BankTransactionFormScreenState extends State<BankTransactionFormScreen> {
 
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
+  final TextEditingController _cariSearchController = TextEditingController();
   final TextEditingController _eftFeeController = TextEditingController();
 
   List<CariSummary> _caris = [];
@@ -177,7 +178,6 @@ class _BankTransactionFormScreenState extends State<BankTransactionFormScreen> {
                     const SizedBox(height: 6),
                     DropdownButtonFormField<BankAccount>(
                       value: _targetBank,
-                      isExpanded: true,
                       decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
                       items: otherBanks.map((b) {
                         return DropdownMenuItem(value: b, child: Text('${b.bankName} (' + currency.format(b.bakiye) + ')', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)));
@@ -284,7 +284,6 @@ class _BankTransactionFormScreenState extends State<BankTransactionFormScreen> {
                     DropdownButtonFormField<Map<String, dynamic>>(
                       value: _selectedGider,
                       isExpanded: true,
-                      hint: const Text('Gider kalemi seçin...', style: TextStyle(fontSize: 12)),
                       decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
                       items: _giders.map((g) {
                         return DropdownMenuItem(value: g, child: Text('${g['GIDERKOD']} - ${g['GIDERADI']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis));
