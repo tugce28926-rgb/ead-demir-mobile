@@ -8,10 +8,10 @@ import '../models/baglanti_model.dart';
 import '../models/fatura_irsaliye_model.dart';
 
 class ApiService {
-  static String currentUser = 'TUĞÇE';
+  static String currentUser = '';
   static bool isAdmin = false;
   static List<String> allowedOperations = [];
-  static bool get isLoggedIn => currentUser.isNotEmpty;
+  static bool get isLoggedIn => currentUser.trim().isNotEmpty;
 
   static void setUser(String username, {bool admin = false, List<String>? ops}) {
     currentUser = username;
@@ -31,7 +31,7 @@ class ApiService {
   ApiService() {
     _dio = Dio(BaseOptions(
       baseUrl: 'https://eadonline.site/api/v1/',
-      connectTimeout: const Duration(seconds: 15),
+      connectTimeout: const Duration(seconds: 20),
       receiveTimeout: const Duration(seconds: 60),
       headers: {
         'Accept': 'application/json',
