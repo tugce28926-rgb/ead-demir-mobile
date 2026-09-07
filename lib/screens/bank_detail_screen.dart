@@ -108,6 +108,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(14),
                 children: [
+                  // Bank Header Card
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -134,6 +135,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
                   ),
                   const SizedBox(height: 14),
 
+                  // 4 QUICK ACTION BUTTONS (Tahsilat, Ödeme, Virman, Gider)
                   Row(
                     children: [
                       _buildQuickAction('Tahsilat', Icons.arrow_downward_rounded, 'gelen_havale', AppTheme.primaryEmerald),
@@ -147,6 +149,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
                   ),
                   const SizedBox(height: 16),
 
+                  // İŞLEM GEÇMİŞİ (Görsel 1 Başlığı)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -207,6 +210,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
     );
   }
 
+  // Görsel 1 ile Birebir Aynı Kart Tasarımı
   Widget _buildTransactionCard(BankTransaction t) {
     final isGiris = t.isGiris;
     final amount = t.amount > 0 ? t.amount : (isGiris ? t.borc : t.alacak);
@@ -238,6 +242,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 1. Satır: Tarih (Sol) - İşlem Türü Rozeti (Sağ) (Görsel 1)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -268,6 +273,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
           ),
           const SizedBox(height: 8),
 
+          // 2. Satır: Ana Başlık (Cari/Banka/Gider Adı) (Sol) - Tutar ₺ (Sağ) (Görsel 1)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -298,6 +304,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
           ),
           const SizedBox(height: 4),
 
+          // 3. Satır: Açıklama / Dekont Notu (Görsel 1)
           Text(
             subTitle,
             style: const TextStyle(
@@ -309,6 +316,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
             overflow: TextOverflow.ellipsis,
           ),
 
+          // Varsa EFT / Havale Masrafı Rozeti
           if (t.eftFee > 0) ...[
             const SizedBox(height: 6),
             Container(
@@ -319,7 +327,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
                 border: Border.all(color: const Color(0xFFFECACA)),
               ),
               child: Row(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisSize: dynamic,
                 children: [
                   const Icon(Icons.receipt_rounded, size: 11, color: Color(0xFFDC2626)),
                   const SizedBox(width: 4),
@@ -333,6 +341,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
           ],
           const SizedBox(height: 8),
 
+          // 4. Satır: Kaydı Sil Butonu (Sağ Alt Köşe - Görsel 1)
           Align(
             alignment: Alignment.centerRight,
             child: InkWell(
@@ -379,12 +388,12 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
   }
 
   Color _getBadgeBg(BankTransaction t) {
-    if (t.isPos || t.operationType == 'pos') return const Color(0xFFD1FAE5);
+    if (t.isPos || t.operationType == 'pos') return const Color(0xFFD1FAE5); // Soft Green
     final op = t.operationType.toLowerCase();
-    if (op == 'virman') return const Color(0xFFDBEAFE);
-    if (op == 'gider') return const Color(0xFFFFE4E6);
-    if (t.isGiris) return const Color(0xFFD1FAE5);
-    return const Color(0xFFFFE4E6);
+    if (op == 'virman') return const Color(0xFFDBEAFE); // Soft Blue
+    if (op == 'gider') return const Color(0xFFFFE4E6); // Soft Pink/Red
+    if (t.isGiris) return const Color(0xFFD1FAE5); // Soft Green
+    return const Color(0xFFFFE4E6); // Soft Red
   }
 
   Color _getBadgeFg(BankTransaction t) {
