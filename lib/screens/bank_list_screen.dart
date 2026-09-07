@@ -113,6 +113,7 @@ class _BankListScreenState extends State<BankListScreen> {
                     ),
                     const Divider(height: 20),
 
+                    // Banka Seçimi
                     const Text('POS HESABI / BANKA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
                     const SizedBox(height: 6),
                     DropdownButtonFormField<BankAccount>(
@@ -134,6 +135,7 @@ class _BankListScreenState extends State<BankListScreen> {
                     ),
                     const SizedBox(height: 14),
 
+                    // Cari Arama
                     const Text('ZİRVE CARİ HESABI', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
                     const SizedBox(height: 6),
                     Autocomplete<CariSummary>(
@@ -166,6 +168,7 @@ class _BankListScreenState extends State<BankListScreen> {
                     ],
                     const SizedBox(height: 14),
 
+                    // Tutar
                     const Text('ÇEKİM TUTARI (TL)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
                     const SizedBox(height: 6),
                     TextField(
@@ -182,6 +185,7 @@ class _BankListScreenState extends State<BankListScreen> {
                     ),
                     const SizedBox(height: 14),
 
+                    // Açıklama
                     const Text('AÇIKLAMA / NOT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
                     const SizedBox(height: 6),
                     TextField(
@@ -194,6 +198,7 @@ class _BankListScreenState extends State<BankListScreen> {
                     ),
                     const SizedBox(height: 20),
 
+                    // Kaydet Butonu
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -284,6 +289,7 @@ class _BankListScreenState extends State<BankListScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // Üst Başlık & POS Tahsilatı Butonu (Görsel 2)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
               child: Row(
@@ -337,6 +343,7 @@ class _BankListScreenState extends State<BankListScreen> {
               ),
             ),
 
+            // Arama Kutusu (Görsel 2: Banka veya cari ara...)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: TextField(
@@ -362,6 +369,7 @@ class _BankListScreenState extends State<BankListScreen> {
             ),
             const SizedBox(height: 6),
 
+            // Banka Kartları Listesi (Görsel 2 tasarımı)
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryBlue))
@@ -431,6 +439,7 @@ class _BankListScreenState extends State<BankListScreen> {
     );
   }
 
+  // Görsel 2 ile Birebir Aynı Banka Kartı
   Widget _buildBankCard(BankAccount bank, {required bool isMain}) {
     final isNegative = bank.bakiye < -0.01;
     final isFon = bank.bankName.toLowerCase().contains('fon') || bank.bankName.toLowerCase().contains('yatirim');
@@ -441,7 +450,7 @@ class _BankListScreenState extends State<BankListScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF06B6D4),
+          color: const Color(0xFF06B6D4), // Görsel 2'deki Turkuaz / Cyan Çerçeve
           width: 1.5,
         ),
         boxShadow: [
@@ -467,6 +476,7 @@ class _BankListScreenState extends State<BankListScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Üst Satır: İkon + Banka Adı + Üç Nokta Menüsü
               Row(
                 children: [
                   Container(
@@ -537,6 +547,7 @@ class _BankListScreenState extends State<BankListScreen> {
               ),
               const SizedBox(height: 14),
 
+              // Alt Satır: BAKİYE (Sol) - Tutar TL (Sağ) (Görsel 2)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.baseline,
