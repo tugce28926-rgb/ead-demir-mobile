@@ -14,7 +14,7 @@ class ApiService {
   static bool get isLoggedIn => currentUser.trim().isNotEmpty;
 
   static void setUser(String username, {bool admin = false, List<String>? ops}) {
-    currentUser = username;
+    currentUser = username.trim();
     isAdmin = admin;
     allowedOperations = ops ?? [];
   }
@@ -35,9 +35,9 @@ class ApiService {
       receiveTimeout: const Duration(seconds: 60),
       headers: {
         'Accept': 'application/json',
-        'X-User-Name': currentUser,
       },
     ));
+    syncUserHeader();
   }
 
   void setCompany(String companyDb) {
@@ -46,7 +46,11 @@ class ApiService {
   }
 
   void syncUserHeader() {
-    _dio.options.headers['X-User-Name'] = currentUser;
+    if (currentUser.isNotEmpty) {
+      _dio.options.headers['X-User-Name'] = Uri.encodeComponent(currentUser);
+    } else {
+      _dio.options.headers.remove('X-User-Name');
+    }
   }
 
   Future<Map<String, dynamic>> login(String username, String password) async {
