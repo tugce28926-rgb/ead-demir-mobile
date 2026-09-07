@@ -6,6 +6,12 @@ class KpiData {
   final double musteriBorclari;
   final double tedarikciBorcu;
 
+  // Compatibility aliases
+  double get toplamAlacak => musteriBorclari;
+  double get toplamBorc => tedarikciBorcu;
+  double get toplamSatisKg => bugunSevkKg;
+  double get bankaNetBakiye => 0.0;
+
   KpiData({
     required this.bugunFaturaTutar,
     required this.bugunFaturaAdet,
@@ -17,12 +23,12 @@ class KpiData {
 
   factory KpiData.fromJson(Map<String, dynamic> json) {
     return KpiData(
-      bugunFaturaTutar: (json['bugunFaturaTutar'] ?? 0).toDouble(),
+      bugunFaturaTutar: (json['bugunFaturaTutar'] ?? json['bugunFatura'] ?? 0).toDouble(),
       bugunFaturaAdet: json['bugunFaturaAdet'] ?? 0,
-      bugunSevkKg: (json['bugunSevkKg'] ?? 0).toDouble(),
+      bugunSevkKg: (json['bugunSevkKg'] ?? json['bugunSevk'] ?? 0).toDouble(),
       bugunSevkAdet: json['bugunSevkAdet'] ?? 0,
-      musteriBorclari: (json['musteriBorclari'] ?? 0).toDouble(),
-      tedarikciBorcu: (json['tedarikciBorcu'] ?? 0).toDouble(),
+      musteriBorclari: (json['musteriBorclari'] ?? json['toplamAlacak'] ?? 0).toDouble(),
+      tedarikciBorcu: (json['tedarikciBorcu'] ?? json['toplamBorc'] ?? 0).toDouble(),
     );
   }
 }
