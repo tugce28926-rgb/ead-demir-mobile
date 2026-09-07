@@ -15,14 +15,12 @@ class BankListScreen extends StatefulWidget {
 
 class _BankListScreenState extends State<BankListScreen> {
   final ApiService _apiService = ApiService();
-  final NumberFormat _currency = NumberFormat.currency(locale: 'tr_TR', symbol: ' TL', decimalDigits: 2);
-  final TextEditingController _searchController = TextEditingController();
+  final NumberFormat _currency = NumberFormat.currency(locale: 'tr_TR', symbol: '₺');
 
   List<BankAccount> _banks = [];
   List<CariSummary> _caris = [];
   bool _isLoading = true;
   bool _showHidden = false;
-  String _searchQuery = '';
 
   @override
   void initState() {
@@ -65,6 +63,7 @@ class _BankListScreenState extends State<BankListScreen> {
     final activeBanks = _banks.where((b) => !b.hidden).toList();
     BankAccount selectedBank = activeBanks.isNotEmpty ? activeBanks.first : _banks.first;
     CariSummary? selectedCari;
+    TextEditingController? activeCariTextController;
     final amountController = TextEditingController();
     final descController = TextEditingController(text: 'POS KART ÇEKİMİ');
     bool isSubmitting = false;
@@ -142,15 +141,24 @@ class _BankListScreenState extends State<BankListScreen> {
                       displayStringForOption: (c) => c.cariAd,
                       optionsBuilder: (textEditingValue) {
                         if (textEditingValue.text.isEmpty) return const Iterable<CariSummary>.empty();
-                        return _caris.where((c) => c.cariAd.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+                        final q = textEditingValue.text.toLowerCase();
+                        return _caris.where((c) => c.cariAd.toLowerCase().contains(q) || c.cariKod.toLowerCase().contains(q));
                       },
-                      onSelected: (c) => setModalState(() => selectedCari = c),
+                      onSelected: (c) {
+                        setModalState(() {
+                          selectedCari = c;
+                          if (activeCariTextController != null) {
+                            activeCariTextController!.text = c.cariAd;
+                          }
+                        });
+                      },
                       fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                        activeCariTextController = controller;
                         return TextField(
                           controller: controller,
                           focusNode: focusNode,
                           decoration: InputDecoration(
-                            hintText: 'Cari unvanı yazın...',
+                            hintText: 'Cari unvanı veya kodu yazın...',
                             hintStyle: const TextStyle(fontSize: 12, color: AppTheme.slate400),
                             prefixIcon: const Icon(Icons.person_search_rounded, color: Color(0xFF7C3AED), size: 20),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -206,16 +214,23 @@ class _BankListScreenState extends State<BankListScreen> {
                         onPressed: isSubmitting
                             ? null
                             : () async {
+                                final cariNameTyped = activeCariTextController?.text.trim() ?? '';
+                                final finalCariName = selectedCari?.cariAd.trim().isNotEmpty == true ? selectedCari!.cariAd : cariNameTyped;
+                                if (finalCariName.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: AppTheme.primaryRose, content: Text('Lütfen bir cari hesap seçin veya unvan girin.')));
+                                  return;
+                                }
+
                                 final amt = double.tryParse(amountController.text.replaceAll(',', '.')) ?? 0;
                                 if (amt <= 0) {
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lütfen geçerli bir tutar girin.')));
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: AppTheme.primaryRose, content: Text('Lütfen geçerli bir tutar girin.')));
                                   return;
                                 }
                                 setModalState(() => isSubmitting = true);
                                 try {
                                   final ok = await _apiService.createPosTahsilat(
                                     bankName: selectedBank.bankName,
-                                    cariName: selectedCari?.cariAd ?? '',
+                                    cariName: finalCariName,
                                     cariRef: selectedCari?.cariKod,
                                     amount: amt,
                                     description: descController.text,
@@ -234,13 +249,13 @@ class _BankListScreenState extends State<BankListScreen> {
                                     }
                                   } else {
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('POS kaydı başarısız oldu.')));
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: AppTheme.primaryRose, content: Text('POS kaydı başarısız oldu.')));
                                     }
                                   }
                                 } catch (err) {
                                   setModalState(() => isSubmitting = false);
                                   if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $err')));
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: AppTheme.primaryRose, content: Text('Hata: $err')));
                                   }
                                 }
                               },
@@ -275,307 +290,252 @@ class _BankListScreenState extends State<BankListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredBanks = _banks.where((b) {
-      if (_searchQuery.isEmpty) return true;
-      return b.bankName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          b.branch.toLowerCase().contains(_searchQuery.toLowerCase());
-    }).toList();
-
-    final mainBanks = filteredBanks.where((b) => !b.hidden).toList();
-    final hiddenBanks = filteredBanks.where((b) => b.hidden).toList();
-
     return Scaffold(
       backgroundColor: AppTheme.slate50,
       body: SafeArea(
-        child: Column(
-          children: [
-            // Üst Başlık & POS Tahsilatı Butonu (Görsel 2)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.account_balance_wallet_rounded, color: AppTheme.primaryBlue, size: 24),
-                      SizedBox(width: 8),
-                      Text(
-                        'Banka Hesapları',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                          color: AppTheme.slate900,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                  InkWell(
-                    onTap: _showPosTahsilatModal,
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _loadData,
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  children: [
+                    // Üst Başlık & POS Tahsilatı Butonu
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF7C3AED),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF7C3AED).withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppTheme.slate200),
                       ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(Icons.credit_card_rounded, color: Colors.white, size: 16),
-                          SizedBox(width: 5),
-                          Text(
-                            'POS Tahsilatı',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.white),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Arama Kutusu (Görsel 2: Banka veya cari ara...)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (val) => setState(() => _searchQuery = val),
-                decoration: InputDecoration(
-                  hintText: 'Banka veya cari ara...',
-                  hintStyle: const TextStyle(fontSize: 12, color: AppTheme.slate400),
-                  prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.primaryBlue, size: 20),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppTheme.slate200),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppTheme.slate200),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-
-            // Banka Kartları Listesi (Görsel 2 tasarımı)
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryBlue))
-                  : RefreshIndicator(
-                      onRefresh: _loadData,
-                      color: AppTheme.primaryBlue,
-                      child: ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        children: [
-                          if (mainBanks.isEmpty && hiddenBanks.isEmpty)
-                            const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(32),
-                                child: Text('Kayıtlı banka hesabı bulunamadı.', style: TextStyle(color: AppTheme.slate400)),
-                              ),
-                            )
-                          else ...[
-                            ...mainBanks.map((b) => _buildBankCard(b, isMain: true)),
-
-                            if (hiddenBanks.isNotEmpty) ...[
-                              const SizedBox(height: 12),
-                              InkWell(
-                                onTap: () => setState(() => _showHidden = !_showHidden),
-                                borderRadius: BorderRadius.circular(14),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: AppTheme.slate200),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.inventory_2_outlined, size: 16, color: AppTheme.slate500),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'DİĞER BANKALAR (${hiddenBanks.length})',
-                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate700),
-                                          ),
-                                        ],
-                                      ),
-                                      Icon(
-                                        _showHidden ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
-                                        color: AppTheme.slate500,
-                                        size: 20,
-                                      ),
-                                    ],
-                                  ),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Banka Hesapları',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppTheme.slate900,
                                 ),
                               ),
-                              if (_showHidden) ...[
-                                const SizedBox(height: 8),
-                                ...hiddenBanks.map((b) => _buildBankCard(b, isMain: false)),
-                              ],
+                              Text(
+                                'Tüm banka bakiyeleri ve hareketleri',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppTheme.slate400,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ],
-                          ],
+                          ),
+                          // Mor POS Tahsilatı Butonu
+                          InkWell(
+                            onTap: _showPosTahsilatModal,
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF7C3AED),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF7C3AED).withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.credit_card_rounded, color: Colors.white, size: 16),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'POS Tahsilatı',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
-            ),
-          ],
-        ),
+                    const SizedBox(height: 12),
+
+                    // Gizlenenleri Göster / Gizle Toggle Butonu
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => setState(() => _showHidden = !_showHidden),
+                          icon: Icon(
+                            _showHidden ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                            size: 16,
+                            color: AppTheme.slate600,
+                          ),
+                          label: Text(
+                            _showHidden ? 'Gizlenenleri Gizle' : 'Gizlenen Bankaları Göster',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.slate600),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Banka Kartları Listesi
+                    ..._banks.where((b) => _showHidden ? true : !b.hidden).map((bank) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildBankCard(bank),
+                      );
+                    }),
+                  ],
+                ),
+              ),
       ),
     );
   }
 
-  // Görsel 2 ile Birebir Aynı Banka Kartı
-  Widget _buildBankCard(BankAccount bank, {required bool isMain}) {
-    final isNegative = bank.bakiye < -0.01;
-    final isFon = bank.bankName.toLowerCase().contains('fon') || bank.bankName.toLowerCase().contains('yatirim');
-
+  Widget _buildBankCard(BankAccount bank) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFF06B6D4), // Görsel 2'deki Turkuaz / Cyan Çerçeve
-          width: 1.5,
-        ),
+        border: Border.all(color: bank.hidden ? AppTheme.slate200 : AppTheme.slate200),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF06B6D4).withOpacity(0.08),
-            blurRadius: 8,
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => BankDetailScreen(bank: bank, allBanks: _banks),
-            ),
-          ).then((_) => _loadData());
-        },
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Üst Satır: İkon + Banka Adı + Üç Nokta Menüsü
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: isFon ? const Color(0xFFE0F2FE) : const Color(0xFFE0F7FA),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        isFon ? Icons.pie_chart_rounded : Icons.account_balance_rounded,
-                        color: isFon ? const Color(0xFF0284C7) : const Color(0xFF0891B2),
-                        size: 22,
-                      ),
-                    ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          bank.bankName,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                            color: AppTheme.slate900,
-                            letterSpacing: -0.2,
+                  child: const Icon(Icons.account_balance_rounded, color: AppTheme.primaryBlue, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              bank.bankName,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                                color: bank.hidden ? AppTheme.slate400 : AppTheme.slate900,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          bank.branch.isNotEmpty ? bank.branch : 'Aktif Hesap',
-                          style: const TextStyle(fontSize: 11, color: AppTheme.slate400, fontWeight: FontWeight.w500),
-                        ),
-                      ],
-                    ),
-                  ),
-                  PopupMenuButton<String>(
-                    icon: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: AppTheme.slate100,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.more_vert_rounded, size: 16, color: AppTheme.slate500),
-                    ),
-                    onSelected: (val) {
-                      if (val == 'toggle_hide') _toggleHideBank(bank);
-                    },
-                    itemBuilder: (_) => [
-                      PopupMenuItem(
-                        value: 'toggle_hide',
-                        child: Row(
-                          children: [
-                            Icon(isMain ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 16, color: AppTheme.slate700),
-                            const SizedBox(width: 8),
-                            Text(isMain ? 'Diğer Bankalara Taşı' : 'Ana Bankalara Taşı', style: const TextStyle(fontSize: 12)),
+                          if (bank.hidden) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppTheme.slate200,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text('Gizli', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.slate600)),
+                            ),
                           ],
-                        ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        bank.iban.isNotEmpty ? bank.iban : (bank.branch.isNotEmpty ? bank.branch : bank.accountType),
+                        style: const TextStyle(fontSize: 11, color: AppTheme.slate400, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 14),
-
-              // Alt Satır: BAKİYE (Sol) - Tutar TL (Sağ) (Görsel 2)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  const Text(
-                    'BAKİYE',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.slate400,
-                      letterSpacing: 0.5,
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      _currency.format(bank.bakiye),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: bank.bakiye >= 0 ? AppTheme.primaryEmerald : AppTheme.primaryRose,
+                      ),
                     ),
-                  ),
-                  Text(
-                    _currency.format(bank.bakiye),
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      color: isNegative ? const Color(0xFFE11D48) : AppTheme.slate900,
-                      letterSpacing: -0.3,
+                    const SizedBox(height: 2),
+                    Text(
+                      bank.bakiye >= 0 ? 'Net Bakiye' : 'Borç Bakiye',
+                      style: const TextStyle(fontSize: 10, color: AppTheme.slate400, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  onPressed: () => _toggleHideBank(bank),
+                  icon: Icon(
+                    bank.hidden ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                    size: 18,
+                    color: AppTheme.slate400,
+                  ),
+                  tooltip: bank.hidden ? 'Bankayı Göster' : 'Bankayı Gizle',
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BankDetailScreen(
+                          bank: bank,
+                          allBanks: _banks,
+                        ),
+                      ),
+                    ).then((_) => _loadData());
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF1F5F9),
+                    foregroundColor: AppTheme.slate700,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 14),
+                  label: const Text('Hareketleri Gör', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
