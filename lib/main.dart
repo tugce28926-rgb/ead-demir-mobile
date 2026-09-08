@@ -8,6 +8,7 @@ import 'screens/home_dashboard_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('tr_TR', null);
+  await ApiService.loadPersistedSession(); // daha önce giriş yapıldıysa hatırla
   runApp(const EadMobileApp());
 }
 
