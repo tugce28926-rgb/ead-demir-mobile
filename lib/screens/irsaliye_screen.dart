@@ -286,11 +286,11 @@ class _IrsaliyeScreenState extends State<IrsaliyeScreen> {
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: const Color(0xFFFFFBEB), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFFDE68A))),
+              decoration: BoxDecoration(color: AppTheme.slate50, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppTheme.slate200)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('İDİS NOTLARI', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: AppTheme.primaryAmber)),
+                  const Text('AÇIKLAMA', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
                   const SizedBox(height: 3),
                   Text(notlar, style: const TextStyle(fontSize: 11, color: AppTheme.slate700)),
                 ],
@@ -328,11 +328,11 @@ class _IrsaliyeScreenState extends State<IrsaliyeScreen> {
                             children: [
                               Text((k['STOKADI'] ?? '-').toString(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.slate900)),
                               const SizedBox(height: 2),
-                              Text('${_kgFormat.format(miktar)} $birim • ${_currency.format(birimFiyat)}', style: const TextStyle(fontSize: 10, color: AppTheme.slate400)),
+                              Text('${_currency.format(birimFiyat)}/$birim • Tutar: ${_currency.format(tutar)}', style: const TextStyle(fontSize: 10, color: AppTheme.slate400)),
                             ],
                           ),
                         ),
-                        Text(_currency.format(tutar), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
+                        Text('${_kgFormat.format(miktar)} $birim', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.primaryPurple)),
                       ],
                     );
                   },
