@@ -271,7 +271,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
           ),
 
           // Varsa EFT / Havale Masrafı Rozeti
-          if (!t.isGiris && !t.isPos && t.eftFee > 0 && (t.operationType == 'giden_havale' || t.operationType == 'virman' || t.operationType == 'odeme' || t.operationType == 'gider')) ...[
+          if (!t.isGiris && !t.isPos && t.eftFee > 0 && (t.operationType == 'giden-havale' || t.operationType == 'virman' || t.operationType == 'odeme' || t.operationType == 'gider')) ...[
             const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
