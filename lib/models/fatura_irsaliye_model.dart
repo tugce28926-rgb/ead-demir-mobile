@@ -1,5 +1,4 @@
 class RecentInvoice {
-class RecentInvoice {
   final int id;
   final String evrakRef;
   final DateTime date;
