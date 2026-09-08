@@ -1,4 +1,5 @@
 class RecentInvoice {
+class RecentInvoice {
   final int id;
   final String evrakRef;
   final DateTime date;
@@ -7,6 +8,7 @@ class RecentInvoice {
   final String tur;
   final bool isGibGonderildi;
   final bool isIptal;
+  final double birimFiyat;
 
   // Aliases for 100% build compatibility
   String get evrakNo => evrakRef;
@@ -14,6 +16,11 @@ class RecentInvoice {
   double get genelToplam => tutar;
   DateTime get tarih => date;
   double get miktar => 0.0;
+
+  // NOT: backend BIRIM_FIYAT'ı zaten KDV DAHİL hesaplayıp gönderiyor
+  // (fatura-liste.ejs ile aynı kanıtlanmış formül: TOPLAM_KDV * 6 / TOPLAM_MIKTAR).
+  // Burada tekrar KDV eklemiyoruz, mükerrer hesap olur.
+  double get birimFiyatKdvDahil => birimFiyat;
 
   RecentInvoice({
     required this.id,
@@ -24,6 +31,7 @@ class RecentInvoice {
     required this.tur,
     this.isGibGonderildi = false,
     this.isIptal = false,
+    this.birimFiyat = 0.0,
   });
 
   factory RecentInvoice.fromJson(Map<String, dynamic> json) {
@@ -38,6 +46,9 @@ class RecentInvoice {
     final numRaw = json['EVRAK_TUTARI'] ?? json['tutar'] ?? json['genelToplam'] ?? json['GENELTOPLAM'] ?? 0;
     final tutarVal = numRaw is num ? numRaw.toDouble() : (double.tryParse(numRaw.toString()) ?? 0.0);
 
+    final birimFiyatRaw = json['BIRIM_FIYAT'] ?? json['birimFiyat'] ?? 0;
+    final birimFiyatVal = birimFiyatRaw is num ? birimFiyatRaw.toDouble() : (double.tryParse(birimFiyatRaw.toString()) ?? 0.0);
+
     return RecentInvoice(
       id: int.tryParse((json['EVRAK_ID'] ?? json['id'] ?? json['SIRANO'] ?? 0).toString()) ?? 0,
       evrakRef: (json['EVRAK_REF'] ?? json['evrakRef'] ?? json['evrakNo'] ?? json['EVRAKNO'] ?? '').toString(),
@@ -47,6 +58,7 @@ class RecentInvoice {
       tur: (json['FATURA_TURU'] ?? json['tur'] ?? 'e-Fatura').toString(),
       isGibGonderildi: json['IS_GIB_GONDERILDI'] == 1 || json['isGibGonderildi'] == true || json['IS_GIB_GONDERILDI'] == '1',
       isIptal: json['IS_IPTAL'] == 1 || json['isIptal'] == true || json['IS_IPTAL'] == '1',
+      birimFiyat: birimFiyatVal,
     );
   }
 }
@@ -92,9 +104,9 @@ class RecentWaybill {
     }
 
     final fatNo = (json['FATURA_NO'] ?? json['faturaNo'] ?? '').toString();
-    final isFat = json['IS_FATURALANDI'] == 1 || 
-                  json['isFaturalandi'] == true || 
-                  json['FATURA_DURUM'] == 'Faturalandı' || 
+    final isFat = json['IS_FATURALANDI'] == 1 ||
+                  json['isFaturalandi'] == true ||
+                  json['FATURA_DURUM'] == 'Faturalandı' ||
                   fatNo.trim().isNotEmpty;
 
     final miktarRaw = json['TOPLAM_MIKTAR'] ?? json['miktarKg'] ?? json['miktar'] ?? 0;
