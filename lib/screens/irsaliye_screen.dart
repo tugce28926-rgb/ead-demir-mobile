@@ -17,6 +17,7 @@ class _IrsaliyeScreenState extends State<IrsaliyeScreen> {
   final NumberFormat _kgFormat = NumberFormat('#,##0', 'tr_TR');
   final TextEditingController _searchController = TextEditingController();
 
+  final NumberFormat _currency = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 2);
   List<RecentWaybill> _waybills = [];
   bool _isLoading = true;
   String _searchQuery = '';
@@ -94,7 +95,10 @@ class _IrsaliyeScreenState extends State<IrsaliyeScreen> {
                             itemCount: filtered.length,
                             itemBuilder: (context, index) {
                               final way = filtered[index];
-                              return Container(
+                              return InkWell(
+                                onTap: () => _showIrsaliyeDetail(way),
+                                borderRadius: BorderRadius.circular(16),
+                                child: Container(
                                 margin: const EdgeInsets.only(bottom: 10),
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
@@ -191,6 +195,7 @@ class _IrsaliyeScreenState extends State<IrsaliyeScreen> {
                                     ),
                                   ],
                                 ),
+                                ),
                               );
                             },
                           ),
@@ -198,6 +203,142 @@ class _IrsaliyeScreenState extends State<IrsaliyeScreen> {
                 ),
               ],
             ),
+    );
+  }
+
+  // Web paneldeki irsaliye-liste.ejs "detailModal" ile aynı bilgiler:
+  // Evrak No, Tarih, Cari, İDİS notu ve kalemler tablosu.
+  Future<void> _showIrsaliyeDetail(RecentWaybill way) async {
+    Map<String, dynamic>? detail;
+    String? error;
+    try {
+      detail = await _apiService.getIrsaliyeDetail(way.evrakRef);
+    } catch (e) {
+      error = 'Detay yüklenemedi: $e';
+    }
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.92,
+        expand: false,
+        builder: (ctx, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: error != null
+              ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(error, style: const TextStyle(color: AppTheme.primaryRose, fontSize: 12))))
+              : _buildIrsaliyeDetailContent(ctx, scrollController, detail ?? {}, way),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIrsaliyeDetailContent(BuildContext ctx, ScrollController scrollController, Map<String, dynamic> detail, RecentWaybill way) {
+    final baslik = (detail['baslik'] is Map) ? Map<String, dynamic>.from(detail['baslik']) : <String, dynamic>{};
+    final kalemler = (detail['kalemler'] is List) ? List<dynamic>.from(detail['kalemler']) : <dynamic>[];
+    final notlar = (baslik['notlar'] ?? '').toString();
+    final evrakTarihi = (baslik['evrakTarihi'] ?? '').toString();
+    String tarihStr = evrakTarihi;
+    try {
+      if (evrakTarihi.isNotEmpty) tarihStr = DateFormat('dd.MM.yyyy').format(DateTime.parse(evrakTarihi));
+    } catch (_) {}
+
+    return Column(
+      children: [
+        const SizedBox(height: 10),
+        Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.slate200, borderRadius: BorderRadius.circular(4))),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  (baslik['evrakNo'] ?? way.evrakRef).toString(),
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppTheme.slate900),
+                ),
+              ),
+              IconButton(icon: const Icon(Icons.close_rounded, color: AppTheme.slate400), onPressed: () => Navigator.pop(ctx)),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '${baslik['cariAd'] ?? way.cariAd} • $tarihStr',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.slate500),
+            ),
+          ),
+        ),
+        if (notlar.trim().isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: const Color(0xFFFFFBEB), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFFDE68A))),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('İDİS NOTLARI', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: AppTheme.primaryAmber)),
+                  const SizedBox(height: 3),
+                  Text(notlar, style: const TextStyle(fontSize: 11, color: AppTheme.slate700)),
+                ],
+              ),
+            ),
+          ),
+        ],
+        const Padding(
+          padding: EdgeInsets.fromLTRB(18, 16, 18, 6),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text('İRSALİYE KALEMLERİ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
+          ),
+        ),
+        Expanded(
+          child: kalemler.isEmpty
+              ? const Center(child: Text('Kalem bulunamadı.', style: TextStyle(color: AppTheme.slate400, fontSize: 12)))
+              : ListView.separated(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+                  itemCount: kalemler.length,
+                  separatorBuilder: (_, __) => const Divider(height: 18),
+                  itemBuilder: (ctx, i) {
+                    final k = Map<String, dynamic>.from(kalemler[i]);
+                    final miktar = (k['MIKTAR'] is num) ? (k['MIKTAR'] as num).toDouble() : 0.0;
+                    final birim = (k['BIRIM'] ?? 'KG').toString();
+                    final birimFiyat = (k['BIRIM_FIYAT'] is num) ? (k['BIRIM_FIYAT'] as num).toDouble() : 0.0;
+                    final tutar = (k['TUTAR'] is num) ? (k['TUTAR'] as num).toDouble() : 0.0;
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text((k['STOKADI'] ?? '-').toString(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.slate900)),
+                              const SizedBox(height: 2),
+                              Text('${_kgFormat.format(miktar)} $birim • ${_currency.format(birimFiyat)}', style: const TextStyle(fontSize: 10, color: AppTheme.slate400)),
+                            ],
+                          ),
+                        ),
+                        Text(_currency.format(tutar), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
+                      ],
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
