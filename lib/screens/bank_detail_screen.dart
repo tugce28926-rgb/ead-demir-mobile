@@ -46,52 +46,6 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
     }
   }
 
-  Future<void> _deleteTransaction(BankTransaction t) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Kaydı Sil', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        content: Text(
-          '${t.cariName.isNotEmpty ? t.cariName : t.description} tutarındaki (${_currency.format(t.amount)}) işlemi Zirve ve sistemden silmek istediğinize emin misiniz?',
-          style: const TextStyle(fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('İptal', style: TextStyle(color: AppTheme.slate500)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryRose,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text('Evet, Sil', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true && t.zirveRef != null) {
-      try {
-        final ok = await _apiService.deleteBankTransaction(t.zirveRef);
-        if (ok) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(backgroundColor: AppTheme.primaryEmerald, content: Text('Kayıt başarıyla silindi.')),
-            );
-            _loadTransactions();
-          }
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Silme hatası: $e')));
-        }
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -339,39 +293,6 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
               ),
             ),
           ],
-          const SizedBox(height: 8),
-
-          // 4. Satır: Kaydı Sil Butonu
-          Align(
-            alignment: Alignment.centerRight,
-            child: InkWell(
-              onTap: () => _deleteTransaction(t),
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF1F2),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFFFE4E6)),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.delete_outline_rounded, size: 13, color: Color(0xFFE11D48)),
-                    SizedBox(width: 4),
-                    Text(
-                      'Kaydı Sil',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFE11D48),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
