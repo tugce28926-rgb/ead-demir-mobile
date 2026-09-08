@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../core/theme.dart';
 import '../models/baglanti_model.dart';
+import '../services/api_service.dart';
 
 class CariDetailScreen extends StatefulWidget {
   final String cariAd;
   final double bakiye;
+  final String vergiNo;
 
   const CariDetailScreen({
     super.key,
     required this.cariAd,
     required this.bakiye,
+    this.vergiNo = '',
   });
 
   @override
@@ -19,119 +22,135 @@ class CariDetailScreen extends StatefulWidget {
 
 class _CariDetailScreenState extends State<CariDetailScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final ApiService _apiService = ApiService();
   final NumberFormat _currency = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 2);
   final NumberFormat _kgFormat = NumberFormat('#,##0', 'tr_TR');
 
-  // Örnek Demir-Çelik Bağlantı Verileri
-  late CariDetailData _detailData;
+  List<Baglanti> _baglantilar = [];
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _loadBaglantilar();
+  }
 
-    _detailData = CariDetailData(
-      cariAd: widget.cariAd,
-      vergiNo: '1234567890',
-      vergiDairesi: 'İSTANBUL VD.',
-      telefon: '0532 123 45 67',
-      sehir: 'İstanbul / Ümraniye',
-      bakiye: widget.bakiye,
-      toplamCiro: 4850000.0,
-      kalanTutar: widget.bakiye,
-      kalanBaglantiKg: 120500.0,
-      toplamSatisKg: 340000.0,
-      baglantilar: [
-        BaglantiItem(
-          id: 'BGL-2026-001',
-          baslik: 'Nervürlü İnşaat Demiri Bağlantısı (12-32mm)',
-          toplamKg: 200000,
-          teslimEdilenKg: 140000,
-          kalanKg: 60000,
-          birimFiyat: 24.50,
-          toplamTutar: 4900000,
-          kalanTutar: 1470000,
-          baslangicTarihi: DateTime(2026, 1, 10),
-          bitisTarihi: DateTime(2026, 6, 30),
-          isAktif: true,
-        ),
-        BaglantiItem(
-          id: 'BGL-2026-002',
-          baslik: 'Kutu Profil & Sanayi Borusu Alımı',
-          toplamKg: 100000,
-          teslimEdilenKg: 39500,
-          kalanKg: 60500,
-          birimFiyat: 28.00,
-          toplamTutar: 2800000,
-          kalanTutar: 1694000,
-          baslangicTarihi: DateTime(2026, 2, 1),
-          bitisTarihi: DateTime(2026, 8, 15),
-          isAktif: true,
-        ),
-        BaglantiItem(
-          id: 'BGL-2025-089',
-          baslik: 'Hasır Çelik (Q Tipi) Sevk Projesi',
-          toplamKg: 50000,
-          teslimEdilenKg: 50000,
-          kalanKg: 0,
-          birimFiyat: 22.00,
-          toplamTutar: 1100000,
-          kalanTutar: 0,
-          baslangicTarihi: DateTime(2025, 9, 1),
-          bitisTarihi: DateTime(2025, 12, 31),
-          isAktif: false,
-        ),
-      ],
-    );
+  Future<void> _loadBaglantilar() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    if (widget.vergiNo.trim().isEmpty) {
+      setState(() {
+        _baglantilar = [];
+        _isLoading = false;
+      });
+      return;
+    }
+    try {
+      final list = await _apiService.getBaglantilarForCari(widget.vergiNo);
+      setState(() {
+        _baglantilar = list;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Bağlantılar yüklenemedi: $e';
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final aktifBaglantilar = _detailData.baglantilar.where((b) => b.isAktif).toList();
-    final gecmisBaglantilar = _detailData.baglantilar.where((b) => !b.isAktif).toList();
+    final aktif = _baglantilar.where((b) => b.status == 'aktif').toList();
+    final gecmis = _baglantilar.where((b) => b.status != 'aktif').toList();
+
+    // Üst özet: her bağlantı kendi KG'siyle listede ayrı ayrı gösteriliyor,
+    // buradaki toplamlar sadece hızlı bir genel bakış için.
+    final toplamKalanKg = aktif.fold<double>(0, (s, b) => s + b.kalanKg);
+    final toplamKalanTutar = aktif.fold<double>(0, (s, b) => s + b.kalanTutar);
+    final toplamSatisKg = _baglantilar.fold<double>(0, (s, b) => s + b.kullanilanKg);
 
     return Scaffold(
       backgroundColor: AppTheme.slate50,
       appBar: AppBar(
         title: const Text('Müşteri Bağlantı & Cari Detayı', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(14),
-        children: [
-          // Cari Üst Kartı
-          _buildCariHeaderCard(),
-          const SizedBox(height: 14),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryBlue))
+          : RefreshIndicator(
+              onRefresh: _loadBaglantilar,
+              color: AppTheme.primaryBlue,
+              child: ListView(
+                padding: const EdgeInsets.all(14),
+                children: [
+                  _buildCariHeaderCard(),
+                  const SizedBox(height: 14),
 
-          // 4'lü Demir-Çelik KPI Grid
-          _buildKpiMetricsGrid(),
-          const SizedBox(height: 18),
+                  _buildKpiMetricsGrid(aktif.length, toplamKalanKg, toplamKalanTutar, toplamSatisKg),
+                  const SizedBox(height: 18),
 
-          // Bağlantı Sekmeleri
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppTheme.slate200),
+                  if (_error != null)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF1F2),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFFFE4E6)),
+                      ),
+                      child: Text(_error!, style: const TextStyle(fontSize: 11, color: AppTheme.primaryRose)),
+                    )
+                  else if (widget.vergiNo.trim().isEmpty)
+                    _buildEmptyState('Bu carinin vergi numarası bulunamadığı için bağlantı geçmişi getirilemedi.')
+                  else ...[
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppTheme.slate200),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        indicatorColor: AppTheme.primaryBlue,
+                        labelColor: AppTheme.primaryBlue,
+                        unselectedLabelColor: AppTheme.slate500,
+                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                        unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        tabs: [
+                          Tab(text: 'Aktif Bağlantılar (${aktif.length})'),
+                          Tab(text: 'Geçmiş Bağlantılar (${gecmis.length})'),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    SizedBox(
+                      height: 420,
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildBaglantiListView(aktif, 'Aktif bağlantı bulunamadı.'),
+                          _buildBaglantiListView(gecmis, 'Geçmiş bağlantı bulunamadı.'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
-            child: TabBar(
-              controller: _tabController,
-              indicatorColor: AppTheme.primaryBlue,
-              labelColor: AppTheme.primaryBlue,
-              unselectedLabelColor: AppTheme.slate500,
-              labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
-              unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              tabs: [
-                Tab(text: 'Aktif Bağlantılar (${aktifBaglantilar.length})'),
-                Tab(text: 'Geçmiş Bağlantılar (${gecmisBaglantilar.length})'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
+    );
+  }
 
-          // Bağlantı Kartları Listesi
-          ...aktifBaglantilar.map((bgl) => _buildBaglantiCard(bgl)),
-        ],
-      ),
+  Widget _buildBaglantiListView(List<Baglanti> list, String emptyMsg) {
+    if (list.isEmpty) return _buildEmptyState(emptyMsg);
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      itemCount: list.length,
+      itemBuilder: (context, index) => _buildBaglantiCard(list[index]),
     );
   }
 
@@ -161,27 +180,26 @@ class _CariDetailScreenState extends State<CariDetailScreen> with SingleTickerPr
                 child: const Text('ZİRVE CARİ KARTI', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppTheme.primaryBlue)),
               ),
               Text(
-                'Bakiye: ${_currency.format(_detailData.bakiye)}',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: _detailData.bakiye > 0 ? AppTheme.primaryRose : AppTheme.primaryEmerald),
+                'Bakiye: ${_currency.format(widget.bakiye)}',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: widget.bakiye > 0 ? AppTheme.primaryRose : AppTheme.primaryEmerald),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            _detailData.cariAd,
+            widget.cariAd,
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.slate900),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'VKN: ${_detailData.vergiNo} • ${_detailData.vergiDairesi} • ${_detailData.sehir}',
-            style: const TextStyle(fontSize: 10, color: AppTheme.slate400),
-          ),
+          if (widget.vergiNo.trim().isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text('VKN: ${widget.vergiNo}', style: const TextStyle(fontSize: 10, color: AppTheme.slate400)),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildKpiMetricsGrid() {
+  Widget _buildKpiMetricsGrid(int aktifSayisi, double kalanKg, double kalanTutar, double satisKg) {
     return GridView.count(
       crossAxisCount: 2,
       crossAxisSpacing: 10,
@@ -190,10 +208,10 @@ class _CariDetailScreenState extends State<CariDetailScreen> with SingleTickerPr
       physics: const NeverScrollableScrollPhysics(),
       childAspectRatio: 1.8,
       children: [
-        _buildMetricItem('TOPLAM CİRO', _currency.format(_detailData.toplamCiro), '💰', AppTheme.primaryBlue, const Color(0xFFEFF6FF)),
-        _buildMetricItem('KALAN TUTAR', _currency.format(_detailData.kalanTutar), '📉', AppTheme.primaryRose, const Color(0xFFFFF1F2)),
-        _buildMetricItem('KALAN BAĞLANTI', '${_kgFormat.format(_detailData.kalanBaglantiKg)} KG', '⚖️', AppTheme.primaryPurple, const Color(0xFFFAF5FF)),
-        _buildMetricItem('TOPLAM SATIŞ', '${_kgFormat.format(_detailData.toplamSatisKg)} KG', '🚚', AppTheme.primaryEmerald, const Color(0xFFECFDF5)),
+        _buildMetricItem('AKTİF BAĞLANTI', '$aktifSayisi Adet', '🔗', AppTheme.primaryBlue, const Color(0xFFEFF6FF)),
+        _buildMetricItem('KALAN TUTAR', _currency.format(kalanTutar), '📉', AppTheme.primaryRose, const Color(0xFFFFF1F2)),
+        _buildMetricItem('TOPLAM KALAN', '${_kgFormat.format(kalanKg)} KG', '⚖️', AppTheme.primaryPurple, const Color(0xFFFAF5FF)),
+        _buildMetricItem('TOPLAM SEVK', '${_kgFormat.format(satisKg)} KG', '🚚', AppTheme.primaryEmerald, const Color(0xFFECFDF5)),
       ],
     );
   }
@@ -229,64 +247,205 @@ class _CariDetailScreenState extends State<CariDetailScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildBaglantiCard(BaglantiItem bgl) {
+  Widget _buildBaglantiCard(Baglanti bgl) {
+    return InkWell(
+      onTap: () => _showBaglantiDetail(bgl),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.slate200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(bgl.baglantiNo, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.slate900)),
+                ),
+                if (bgl.tevkifat) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    margin: const EdgeInsets.only(right: 6),
+                    decoration: BoxDecoration(color: const Color(0xFFFFFBEB), borderRadius: BorderRadius.circular(4)),
+                    child: const Text('TEVKİFAT', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: AppTheme.primaryAmber)),
+                  ),
+                ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: bgl.status == 'aktif' ? const Color(0xFFECFDF5) : AppTheme.slate100,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: bgl.status == 'aktif' ? const Color(0xFFA7F3D0) : AppTheme.slate200),
+                  ),
+                  child: Text(
+                    bgl.status == 'aktif' ? 'AKTİF SEVKLER' : 'KAPANDI',
+                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: bgl.status == 'aktif' ? AppTheme.primaryEmerald : AppTheme.slate500),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${_kgFormat.format(bgl.toplamKg)} KG • ${_currency.format(bgl.birimFiyat)}/KG${bgl.baglantiTarihi.isNotEmpty ? ' • ${bgl.baglantiTarihi}' : ''}',
+              style: const TextStyle(fontSize: 10, color: AppTheme.slate400),
+            ),
+            const SizedBox(height: 10),
+
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: bgl.tamamlanmaOrani,
+                backgroundColor: AppTheme.slate100,
+                color: AppTheme.primaryBlue,
+                minHeight: 8,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Sevk Edilen: ${_kgFormat.format(bgl.kullanilanKg)} KG',
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
+                ),
+                Text(
+                  'Kalan: ${_kgFormat.format(bgl.kalanKg)} KG',
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String msg) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.slate200),
       ),
+      child: Center(
+        child: Text(msg, style: const TextStyle(fontSize: 11, color: AppTheme.slate400, fontWeight: FontWeight.w500), textAlign: TextAlign.center),
+      ),
+    );
+  }
+
+  // Web paneldeki "openCariModal / renderCard" ile aynı mantık: bağlantıya tıklayınca
+  // sevkiyat (satış) geçmişini ve ilerleme detayını gösteren alt panel.
+  void _showBaglantiDetail(Baglanti bgl) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.92,
+        expand: false,
+        builder: (ctx, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.slate200, borderRadius: BorderRadius.circular(4))),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(bgl.baglantiNo, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
+                    ),
+                    IconButton(icon: const Icon(Icons.close_rounded, color: AppTheme.slate400), onPressed: () => Navigator.pop(ctx)),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _detailChip('Toplam', '${_kgFormat.format(bgl.toplamKg)} KG'),
+                    _detailChip('Birim Fiyat', _currency.format(bgl.birimFiyat)),
+                    _detailChip('Sevk Edilen', '${_kgFormat.format(bgl.kullanilanKg)} KG'),
+                    _detailChip('Kalan', '${_kgFormat.format(bgl.kalanKg)} KG'),
+                    _detailChip('Kalan Tutar', _currency.format(bgl.kalanTutar)),
+                    if (bgl.tevkifat) _detailChip('Tevkifat', 'Var'),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(18, 16, 18, 6),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('SEVKİYAT GEÇMİŞİ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
+                ),
+              ),
+              Expanded(
+                child: bgl.satislar.isEmpty
+                    ? const Center(child: Text('Bu bağlantıya ait sevkiyat kaydı bulunamadı.', style: TextStyle(color: AppTheme.slate400, fontSize: 12)))
+                    : ListView.separated(
+                        controller: scrollController,
+                        padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+                        itemCount: bgl.satislar.length,
+                        separatorBuilder: (_, __) => const Divider(height: 18),
+                        itemBuilder: (ctx, i) {
+                          final s = bgl.satislar[i];
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(s.evrakNo, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.slate900)),
+                                    const SizedBox(height: 2),
+                                    Text(s.tarih, style: const TextStyle(fontSize: 10, color: AppTheme.slate400)),
+                                  ],
+                                ),
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text('${_kgFormat.format(s.toplamKg)} KG', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.primaryPurple)),
+                                  Text(_currency.format(s.bagTutar), style: const TextStyle(fontSize: 10, color: AppTheme.slate500)),
+                                ],
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailChip(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(color: AppTheme.slate50, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppTheme.slate200)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(bgl.id, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppTheme.slate400)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: bgl.isAktif ? const Color(0xFFECFDF5) : AppTheme.slate100,
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: bgl.isAktif ? const Color(0xFFA7F3D0) : AppTheme.slate200),
-                ),
-                child: Text(
-                  bgl.isAktif ? 'AKTİF SEVKLER' : 'KAPANDI',
-                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: bgl.isAktif ? AppTheme.primaryEmerald : AppTheme.slate500),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(bgl.baslik, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.slate900)),
-          const SizedBox(height: 10),
-
-          // İlerleme Çubuğu
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: bgl.tamamlanmaOrani,
-              backgroundColor: AppTheme.slate100,
-              color: AppTheme.primaryBlue,
-              minHeight: 8,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Teslim: ${_kgFormat.format(bgl.teslimEdilenKg)} KG',
-                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
-              ),
-              Text(
-                'Kalan: ${_kgFormat.format(bgl.kalanKg)} KG',
-                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple),
-              ),
-            ],
-          ),
+          Text(label, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: AppTheme.slate400)),
+          Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
         ],
       ),
     );
