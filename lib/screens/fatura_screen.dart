@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../core/theme.dart';
@@ -110,6 +111,13 @@ class _FaturaScreenState extends State<FaturaScreen> {
               ),
             ],
           ),
+          if (inv.birimFiyat > 0) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Birim Fiyat (KDV Dahil): ${_currency.format(inv.birimFiyatKdvDahil)}',
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.primaryBlue),
+            ),
+          ],
           const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
