@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants.dart';
 import '../models/kpi_model.dart';
 import '../models/bank_model.dart';
@@ -13,16 +14,47 @@ class ApiService {
   static List<String> allowedOperations = [];
   static bool get isLoggedIn => currentUser.trim().isNotEmpty;
 
+  static const _prefUser = 'ead_user';
+  static const _prefAdmin = 'ead_is_admin';
+  static const _prefOps = 'ead_allowed_ops';
+
+  // Uygulama açılışında (main.dart) çağrılır: daha önce giriş yapılmışsa
+  // kullanıcıyı hatırlar, tekrar giriş ekranı göstermez.
+  static Future<void> loadPersistedSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedUser = prefs.getString(_prefUser) ?? '';
+      if (savedUser.trim().isNotEmpty) {
+        currentUser = savedUser;
+        isAdmin = prefs.getBool(_prefAdmin) ?? false;
+        allowedOperations = prefs.getStringList(_prefOps) ?? [];
+      }
+    } catch (_) {
+      // Kalıcı depoya erişilemezse sessizce normal giriş akışına düşer.
+    }
+  }
+
   static void setUser(String username, {bool admin = false, List<String>? ops}) {
     currentUser = username.trim();
     isAdmin = admin;
     allowedOperations = ops ?? [];
+    _persistSession();
+  }
+
+  static Future<void> _persistSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefUser, currentUser);
+      await prefs.setBool(_prefAdmin, isAdmin);
+      await prefs.setStringList(_prefOps, allowedOperations);
+    } catch (_) {}
   }
 
   static void logout() {
     currentUser = '';
     isAdmin = false;
     allowedOperations = [];
+    SharedPreferences.getInstance().then((prefs) => prefs.clear()).catchError((_) {});
   }
 
   late final Dio _dio;
@@ -196,6 +228,29 @@ class ApiService {
       return (res.data as List).map((e) => Baglanti.fromJson(Map<String, dynamic>.from(e))).toList();
     }
     return [];
+  }
+
+  // Tek bir carinin TÜM bağlantılarını ayrı ayrı (gruplanmadan) döner — cari detay ekranı için.
+  Future<List<Baglanti>> getBaglantilarForCari(String vergiNo) async {
+    syncUserHeader();
+    final res = await _dio.get('baglantilar/cari/${Uri.encodeComponent(vergiNo)}', queryParameters: {'company': activeCompany});
+    final data = res.data;
+    if (data is Map && data['baglantilar'] is List) {
+      return (data['baglantilar'] as List).map((e) => Baglanti.fromJson(Map<String, dynamic>.from(e))).toList();
+    }
+    return [];
+  }
+
+  // FerroxPro (MongoDB) "durum_ozet" koleksiyonundaki net_durum belgesinin kg alanı.
+  Future<double> getNetDurum() async {
+    syncUserHeader();
+    final res = await _dio.get('net-durum');
+    final data = res.data;
+    if (data is Map && data['kg'] != null) {
+      final kg = data['kg'];
+      return kg is num ? kg.toDouble() : (double.tryParse(kg.toString()) ?? 0.0);
+    }
+    return 0.0;
   }
 
   Future<bool> hideBank(String bankName) async {
