@@ -15,6 +15,7 @@ dependencies:
   intl: any
   pdf: ^3.10.8
   printing: ^5.13.1
+  shared_preferences: ^2.2.3
 
 dev_dependencies:
   flutter_test:
