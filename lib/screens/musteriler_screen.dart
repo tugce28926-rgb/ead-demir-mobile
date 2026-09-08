@@ -21,7 +21,6 @@ class _MusterilerScreenState extends State<MusterilerScreen> with SingleTickerPr
   final TextEditingController _searchController = TextEditingController();
 
   List<CariSummary> _borclular = [];
-  List<CariSummary> _alacaklilar = [];
   List<CariSummary> _tumCariler = [];
   List<Baglanti> _baglantilar = [];
   bool _isLoading = true;
@@ -30,7 +29,7 @@ class _MusterilerScreenState extends State<MusterilerScreen> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadAllData();
   }
 
@@ -38,12 +37,10 @@ class _MusterilerScreenState extends State<MusterilerScreen> with SingleTickerPr
     setState(() => _isLoading = true);
     try {
       final borc = await _apiService.getDebtors();
-      final alacak = await _apiService.getCreditors();
       final tum = await _apiService.getAllCaris();
       final bag = await _apiService.getBaglantilar();
       setState(() {
         _borclular = borc;
-        _alacaklilar = alacak;
         _tumCariler = tum;
         _baglantilar = bag;
         _isLoading = false;
@@ -71,7 +68,6 @@ class _MusterilerScreenState extends State<MusterilerScreen> with SingleTickerPr
           isScrollable: false,
           tabs: const [
             Tab(text: 'Borçlular'),
-            Tab(text: 'Alacaklılar'),
             Tab(text: 'Tüm Cariler'),
             Tab(text: 'Bağlantılar'),
           ],
@@ -103,7 +99,6 @@ class _MusterilerScreenState extends State<MusterilerScreen> with SingleTickerPr
                     controller: _tabController,
                     children: [
                       _buildCariList(_borclular, isBorclu: true),
-                      _buildCariList(_alacaklilar, isBorclu: false),
                       _buildCariList(_tumCariler, isAll: true),
                       _buildBaglantiList(),
                     ],
@@ -178,7 +173,7 @@ class _MusterilerScreenState extends State<MusterilerScreen> with SingleTickerPr
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => CariDetailScreen(cariAd: c.cariAd, bakiye: c.bakiye)),
+                  MaterialPageRoute(builder: (_) => CariDetailScreen(cariAd: c.cariAd, bakiye: c.bakiye, vergiNo: c.vergiNo ?? '')),
                 );
               },
             ),
