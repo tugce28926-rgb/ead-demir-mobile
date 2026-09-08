@@ -78,8 +78,25 @@ class _FaturaScreenState extends State<FaturaScreen> {
     );
   }
 
+  void _openInvoicePdf(RecentInvoice inv) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PdfViewerScreen(
+          documentId: inv.id.toString(),
+          documentNo: inv.evrakRef,
+          title: inv.cariAd,
+          type: 'fatura',
+        ),
+      ),
+    );
+  }
+
   Widget _buildInvoiceCard(RecentInvoice inv) {
-    return Container(
+    return InkWell(
+      onTap: () => _openInvoicePdf(inv),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -123,19 +140,7 @@ class _FaturaScreenState extends State<FaturaScreen> {
             children: [
               Text('${inv.evrakRef} • ${DateFormat("dd.MM.yyyy").format(inv.date)}', style: const TextStyle(fontSize: 10, color: AppTheme.slate400)),
               InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PdfViewerScreen(
-                        documentId: inv.id.toString(),
-                        documentNo: inv.evrakRef,
-                        title: inv.cariAd,
-                        type: 'fatura',
-                      ),
-                    ),
-                  );
-                },
+                onTap: () => _openInvoicePdf(inv),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
@@ -174,6 +179,7 @@ class _FaturaScreenState extends State<FaturaScreen> {
             ],
           ),
         ],
+      ),
       ),
     );
   }
