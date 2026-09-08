@@ -1,3 +1,30 @@
+class Satis {
+  final String evrakNo;
+  final String tarih;
+  final double toplamKg;
+  final double birimFiyat;
+  final double bagTutar;
+
+  Satis({
+    required this.evrakNo,
+    required this.tarih,
+    required this.toplamKg,
+    required this.birimFiyat,
+    required this.bagTutar,
+  });
+
+  factory Satis.fromJson(Map<String, dynamic> json) {
+    double toDouble(dynamic v) => v is num ? v.toDouble() : (double.tryParse(v?.toString() ?? '') ?? 0.0);
+    return Satis(
+      evrakNo: (json['evrakNo'] ?? '-').toString(),
+      tarih: (json['tarih'] ?? '').toString(),
+      toplamKg: toDouble(json['toplamKg'] ?? json['bagKg']),
+      birimFiyat: toDouble(json['birimFiyat']),
+      bagTutar: toDouble(json['bagTutar']),
+    );
+  }
+}
+
 class Baglanti {
   final dynamic id;
   final String baglantiNo;
@@ -11,6 +38,10 @@ class Baglanti {
   final double kalanTutar;
   final String status;
   final bool tevkifat;
+  final String baglantiTarihi;
+  final double kullanimYuzdesi; // 0-100
+  final List<Satis> satislar; // sevkiyat / çıkış geçmişi (cari-özel detay çağrısında dolu gelir)
+  final int subCount; // aynı cariye ait kaç bağlantı gruplandı (özet listede)
 
   Baglanti({
     required this.id,
@@ -25,14 +56,22 @@ class Baglanti {
     required this.kalanTutar,
     this.status = 'aktif',
     this.tevkifat = false,
+    this.baglantiTarihi = '',
+    this.kullanimYuzdesi = 0,
+    this.satislar = const [],
+    this.subCount = 1,
   });
 
+  double get tamamlanmaOrani => toplamKg > 0 ? (kullanilanKg / toplamKg).clamp(0, 1) : 0;
+
   factory Baglanti.fromJson(Map<String, dynamic> json) {
-    final miktar = (json['miktar'] ?? json['toplamKg'] ?? 0).toDouble();
-    final kullanilan = (json['kullanilanKg'] ?? 0).toDouble();
-    final kalan = (json['kalanKg'] ?? json['kalanMiktar'] ?? (miktar - kullanilan)).toDouble();
-    final bFiyat = (json['birimFiyat'] ?? json['birim_fiyat'] ?? 0).toDouble();
-    final bTutar = (json['kalanTutar'] ?? (kalan * bFiyat)).toDouble();
+    double toDouble(dynamic v) => v is num ? v.toDouble() : (double.tryParse(v?.toString() ?? '') ?? 0.0);
+
+    final miktar = toDouble(json['miktar'] ?? json['toplamKg']);
+    final kullanilan = toDouble(json['kullanilanKg']);
+    final kalan = json['kalanKg'] != null ? toDouble(json['kalanKg']) : (miktar - kullanilan);
+    final bFiyat = toDouble(json['birimFiyat'] ?? json['birim_fiyat']);
+    final bTutar = json['kalanTutar'] != null ? toDouble(json['kalanTutar']) : (kalan * bFiyat);
 
     return Baglanti(
       id: json['_id'] ?? json['id'] ?? 0,
@@ -47,64 +86,12 @@ class Baglanti {
       kalanTutar: bTutar,
       status: (json['status'] ?? 'aktif').toString(),
       tevkifat: json['tevkifat'] == true || json['tevkifat'] == 'true',
+      baglantiTarihi: (json['baglantiTarihi'] ?? '').toString(),
+      kullanimYuzdesi: toDouble(json['kullanimYuzdesi']),
+      satislar: (json['satislar'] is List)
+          ? (json['satislar'] as List).map((e) => Satis.fromJson(Map<String, dynamic>.from(e))).toList()
+          : const [],
+      subCount: (json['subCount'] is num) ? (json['subCount'] as num).toInt() : 1,
     );
   }
-}
-
-class BaglantiItem {
-  final String id;
-  final String baslik;
-  final double toplamKg;
-  final double teslimEdilenKg;
-  final double kalanKg;
-  final double birimFiyat;
-  final double toplamTutar;
-  final double kalanTutar;
-  final DateTime baslangicTarihi;
-  final DateTime bitisTarihi;
-  final bool isAktif;
-
-  BaglantiItem({
-    required this.id,
-    required this.baslik,
-    required this.toplamKg,
-    required this.teslimEdilenKg,
-    required this.kalanKg,
-    required this.birimFiyat,
-    required this.toplamTutar,
-    required this.kalanTutar,
-    required this.baslangicTarihi,
-    required this.bitisTarihi,
-    required this.isAktif,
-  });
-
-  double get tamamlanmaOrani => toplamKg > 0 ? (teslimEdilenKg / toplamKg) : 0;
-}
-
-class CariDetailData {
-  final String cariAd;
-  final String vergiNo;
-  final String vergiDairesi;
-  final String telefon;
-  final String sehir;
-  final double bakiye;
-  final double toplamCiro;
-  final double kalanTutar;
-  final double kalanBaglantiKg;
-  final double toplamSatisKg;
-  final List<BaglantiItem> baglantilar;
-
-  CariDetailData({
-    required this.cariAd,
-    required this.vergiNo,
-    required this.vergiDairesi,
-    required this.telefon,
-    required this.sehir,
-    required this.bakiye,
-    required this.toplamCiro,
-    required this.kalanTutar,
-    required this.kalanBaglantiKg,
-    required this.toplamSatisKg,
-    required this.baglantilar,
-  });
 }
