@@ -202,7 +202,17 @@ class _MusterilerScreenState extends State<MusterilerScreen> with SingleTickerPr
         itemCount: filtered.length,
         itemBuilder: (context, index) {
           final b = filtered[index];
-          return Container(
+          return InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CariDetailScreen(cariAd: b.cariAd, bakiye: 0.0, vergiNo: b.cariVergiNo),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -252,6 +262,7 @@ class _MusterilerScreenState extends State<MusterilerScreen> with SingleTickerPr
                   ],
                 ),
               ],
+            ),
             ),
           );
         },
