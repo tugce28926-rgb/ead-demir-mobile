@@ -1,48 +1,27 @@
-import 'dart:async';
-import '../models/notification_model.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 class NotificationService {
-  static final NotificationService _instance = NotificationService._internal();
-  factory NotificationService() => _instance;
-  NotificationService._internal();
+  static const String oneSignalAppId = "db433b13-5375-4f59-9d2c-fd229b80151b";
 
-  final List<AppNotification> _notifications = [];
-  final StreamController<AppNotification> _notificationStream = StreamController<AppNotification>.broadcast();
+  static Future<void> initialize() async {
+    try {
+      // OneSignal Başlatma
+      OneSignal.initialize(oneSignalAppId);
 
-  Stream<AppNotification> get onNewNotification => _notificationStream.stream;
-  List<AppNotification> get notifications => List.unmodifiable(_notifications);
-  int get unreadCount => _notifications.where((n) => !n.isRead).length;
+      // Kullanıcıdan Bildirim İzni İsteme
+      await OneSignal.Notifications.requestPermission(true);
 
-  void triggerNotification({
-    required String title,
-    required String message,
-    required String type,
-    String? documentNo,
-  }) {
-    final notification = AppNotification(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: title,
-      message: message,
-      type: type,
-      timestamp: DateTime.now(),
-      documentNo: documentNo,
-    );
-
-    _notifications.insert(0, notification);
-    _notificationStream.add(notification);
+      // Bildirime tıklandığında yapılacak işlemler (opsiyonel)
+      OneSignal.Notifications.addClickListener((event) {
+        // İleride belirli bir ekrana yönlendirme yapılabilir
+      });
+    } catch (_) {}
   }
 
-  void markAllAsRead() {
-    for (int i = 0; i < _notifications.length; i++) {
-      _notifications[i] = AppNotification(
-        id: _notifications[i].id,
-        title: _notifications[i].title,
-        message: _notifications[i].message,
-        type: _notifications[i].type,
-        timestamp: _notifications[i].timestamp,
-        isRead: true,
-        documentNo: _notifications[i].documentNo,
-      );
-    }
+  static Future<void> unregister() async {
+    try {
+      await OneSignal.logout();
+    } catch (_) {}
   }
 }
+
