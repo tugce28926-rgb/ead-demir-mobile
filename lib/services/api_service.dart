@@ -177,21 +177,29 @@ class ApiService {
     String? username,
   }) async {
     syncUserHeader();
-    final res = await _dio.post('banks/transaction', data: {
-      'company': activeCompany,
-      'operationType': operationType,
-      'sourceBank': sourceBank,
-      'targetBank': targetBank,
-      'cariRef': cariRef,
-      'cariName': cariName,
-      'amount': amount,
-      'description': description,
-      'expenseItem': expenseItem,
-      'eftFee': eftFee,
-      'username': username ?? currentUser,
-      'kullanici': username ?? currentUser,
-    });
-    return res.data != null && res.data['ok'] == true;
+    try {
+      final res = await _dio.post('banks/transaction', data: {
+        'company': activeCompany,
+        'operationType': operationType,
+        'sourceBank': sourceBank,
+        'targetBank': targetBank,
+        'cariRef': cariRef,
+        'cariName': cariName,
+        'amount': amount,
+        'description': description,
+        'expenseItem': expenseItem,
+        'eftFee': eftFee,
+        'username': username ?? currentUser,
+        'kullanici': username ?? currentUser,
+      });
+      if (res.data != null && res.data['ok'] == true) return true;
+      final err = (res.data is Map) ? res.data['error'] : null;
+      throw Exception(err ?? 'Kayıt başarısız oldu.');
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final err = (data is Map) ? (data['error'] ?? e.message) : e.message;
+      throw Exception(err ?? 'Bağlantı hatası');
+    }
   }
 
   Future<List<CariSummary>> getDebtors() async {
