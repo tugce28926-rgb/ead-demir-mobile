@@ -16,6 +16,7 @@ dependencies:
   pdf: ^3.10.8
   printing: ^5.13.1
   shared_preferences: ^2.2.3
+  onesignal_flutter: ^5.2.7
 
 dev_dependencies:
   flutter_test:
