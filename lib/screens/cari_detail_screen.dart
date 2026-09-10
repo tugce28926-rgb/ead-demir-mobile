@@ -292,7 +292,7 @@ class _CariDetailScreenState extends State<CariDetailScreen> with SingleTickerPr
             ),
             const SizedBox(height: 4),
             Text(
-              '${_kgFormat.format(bgl.toplamKg)} KG • ${_currency.format(bgl.birimFiyat)}/KG${bgl.baglantiTarihi.isNotEmpty ? ' • ${bgl.baglantiTarihi}' : ''}',
+              '${_kgFormat.format(bgl.toplamKg)} KG • ${_currency.format(bgl.birimFiyat)}/KG${bgl.baglantiTarihi.isNotEmpty ? ' • ${_fmtTarih(bgl.baglantiTarihi)}' : ''}',
               style: const TextStyle(fontSize: 10, color: AppTheme.slate400),
             ),
             const SizedBox(height: 10),
@@ -340,9 +340,39 @@ class _CariDetailScreenState extends State<CariDetailScreen> with SingleTickerPr
     );
   }
 
+  // Ham tarih string'ini (ISO "2026-09-10", "10.09.2026", "10/09/2026" vb.) DateTime'a çevirir.
+  static DateTime? _parseTarih(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty) return null;
+    final iso = DateTime.tryParse(t);
+    if (iso != null) return iso;
+    final m = RegExp(r'^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$').firstMatch(t);
+    if (m != null) {
+      var y = int.parse(m.group(3)!);
+      if (y < 100) y += 2000;
+      return DateTime(y, int.parse(m.group(2)!), int.parse(m.group(1)!));
+    }
+    return null;
+  }
+
+  // Her yerde gün.ay.yıl biçimi; çözümlenemezse olduğu gibi bırakır.
+  static String _fmtTarih(String raw) {
+    final d = _parseTarih(raw);
+    return d == null ? raw : DateFormat('dd.MM.yyyy').format(d);
+  }
+
   // Web paneldeki "openCariModal / renderCard" ile aynı mantık: bağlantıya tıklayınca
   // sevkiyat (satış) geçmişini ve ilerleme detayını gösteren alt panel.
   void _showBaglantiDetail(Baglanti bgl) {
+    // Sevkiyatları en yeni tarih üstte olacak şekilde sırala.
+    final satislar = [...bgl.satislar]..sort((a, b) {
+      final da = _parseTarih(a.tarih);
+      final db = _parseTarih(b.tarih);
+      if (da == null && db == null) return 0;
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return db.compareTo(da);
+    });
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -396,15 +426,15 @@ class _CariDetailScreenState extends State<CariDetailScreen> with SingleTickerPr
                 ),
               ),
               Expanded(
-                child: bgl.satislar.isEmpty
+                child: satislar.isEmpty
                     ? const Center(child: Text('Bu bağlantıya ait sevkiyat kaydı bulunamadı.', style: TextStyle(color: AppTheme.slate400, fontSize: 12)))
                     : ListView.separated(
                         controller: scrollController,
                         padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
-                        itemCount: bgl.satislar.length,
+                        itemCount: satislar.length,
                         separatorBuilder: (_, __) => const Divider(height: 18),
                         itemBuilder: (ctx, i) {
-                          final s = bgl.satislar[i];
+                          final s = satislar[i];
                           return Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -414,7 +444,7 @@ class _CariDetailScreenState extends State<CariDetailScreen> with SingleTickerPr
                                   children: [
                                     Text(s.evrakNo, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.slate900)),
                                     const SizedBox(height: 2),
-                                    Text(s.tarih, style: const TextStyle(fontSize: 10, color: AppTheme.slate400)),
+                                    Text(_fmtTarih(s.tarih), style: const TextStyle(fontSize: 10, color: AppTheme.slate400)),
                                   ],
                                 ),
                               ),
