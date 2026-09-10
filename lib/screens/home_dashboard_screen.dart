@@ -11,6 +11,7 @@ import 'bank_list_screen.dart';
 import 'musteriler_screen.dart';
 import 'irsaliye_screen.dart';
 import 'fatura_screen.dart';
+import 'pdf_viewer_screen.dart';
 
 class HomeDashboardScreen extends StatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -506,154 +507,199 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     );
   }
 
-  Widget _buildInvoiceCard(RecentInvoice inv) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.slate200),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  inv.cariAd,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.slate900),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      '${inv.evrakRef} • ' + DateFormat('dd/MM').format(inv.date),
-                      style: const TextStyle(fontSize: 10, color: AppTheme.slate400, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: inv.tur == 'e-Fatura' ? const Color(0xFFEFF6FF) : const Color(0xFFFAF5FF),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        inv.tur,
-                        style: TextStyle(
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                          color: inv.tur == 'e-Fatura' ? AppTheme.primaryBlue : AppTheme.primaryPurple,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                _currencyFormat.format(inv.tutar),
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.slate900),
-              ),
-              const SizedBox(height: 4),
-              InkWell(
-                onTap: () {
-                  setState(() => _currentTabIndex = 3);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFECFDF5),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFA7F3D0)),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.print_rounded, size: 10, color: AppTheme.primaryEmerald),
-                      SizedBox(width: 3),
-                      Text('PDF', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: AppTheme.primaryEmerald)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+  void _openPdf(String documentId, String documentNo, String title, String type) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PdfViewerScreen(documentId: documentId, documentNo: documentNo, title: title, type: type),
       ),
     );
   }
 
-  Widget _buildWaybillCard(RecentWaybill way) {
+  Widget _buildBadge(String text, Color bg, Color textCol) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.slate200),
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: textCol.withOpacity(0.3)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Text(text, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: textCol)),
+    );
+  }
+
+  // Fatura ekranındaki (fatura_screen.dart) kartın birebir aynısı.
+  Widget _buildInvoiceCard(RecentInvoice inv) {
+    return InkWell(
+      onTap: () => _openPdf(inv.id.toString(), inv.evrakRef, inv.cariAd, 'fatura'),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.slate200),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 6, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  way.cariAd,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.slate900),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Expanded(
+                  child: Text(
+                    inv.cariAd,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.slate900),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                const SizedBox(height: 4),
                 Text(
-                  '${way.evrakRef} • ' + DateFormat('dd/MM').format(way.date),
-                  style: const TextStyle(fontSize: 10, color: AppTheme.slate400, fontWeight: FontWeight.w500),
+                  _currencyFormat.format(inv.tutar),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.slate900),
                 ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${_kgFormat.format(way.miktarKg)} KG',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.primaryPurple),
-              ),
+            if (inv.birimFiyat > 0) ...[
               const SizedBox(height: 4),
-              InkWell(
-                onTap: () {
-                  setState(() => _currentTabIndex = 2);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFECFDF5),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFA7F3D0)),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.print_rounded, size: 10, color: AppTheme.primaryEmerald),
-                      SizedBox(width: 3),
-                      Text('PDF', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: AppTheme.primaryEmerald)),
-                    ],
-                  ),
-                ),
+              Text(
+                'Birim Fiyat (KDV Dahil): ${_currencyFormat.format(inv.birimFiyatKdvDahil)}',
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.primaryBlue),
               ),
             ],
-          ),
-        ],
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('${inv.evrakRef} • ${DateFormat("dd.MM.yyyy").format(inv.date)}', style: const TextStyle(fontSize: 10, color: AppTheme.slate400)),
+                InkWell(
+                  onTap: () => _openPdf(inv.id.toString(), inv.evrakRef, inv.cariAd, 'fatura'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFA7F3D0)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.print, size: 10, color: AppTheme.primaryEmerald),
+                        SizedBox(width: 3),
+                        Text('Göster & Yazdır', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppTheme.primaryEmerald)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _buildBadge(inv.tur, const Color(0xFFEFF6FF), AppTheme.primaryBlue),
+                const SizedBox(width: 6),
+                if (inv.isIptal)
+                  _buildBadge('İPTAL EDİLDİ', const Color(0xFFFEF2F2), AppTheme.primaryRose)
+                else if (inv.isGibGonderildi)
+                  _buildBadge('GİB Onaylı', const Color(0xFFF0FDF4), AppTheme.primaryEmerald)
+                else
+                  _buildBadge('GİB Bekliyor (Taslak)', const Color(0xFFFFFBEB), AppTheme.primaryAmber),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // İrsaliye ekranındaki (irsaliye_screen.dart) kartın birebir aynısı.
+  Widget _buildWaybillCard(RecentWaybill way) {
+    return InkWell(
+      onTap: () => _openPdf(way.id.toString(), way.evrakRef, way.cariAd, 'irsaliye'),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.slate200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    way.cariAd,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.slate900),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Text(
+                  '${_kgFormat.format(way.miktarKg)} KG',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.primaryPurple),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${way.evrakRef} • ${DateFormat("dd.MM.yyyy").format(way.date)}',
+                  style: const TextStyle(fontSize: 10, color: AppTheme.slate400, fontWeight: FontWeight.w500),
+                ),
+                InkWell(
+                  onTap: () => _openPdf(way.id.toString(), way.evrakRef, way.cariAd, 'irsaliye'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFA7F3D0)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.print_rounded, size: 11, color: AppTheme.primaryEmerald),
+                        SizedBox(width: 3),
+                        Text('PDF / GİB', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: AppTheme.primaryEmerald)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                if (way.isIptal)
+                  _buildBadge('İPTAL EDİLDİ', const Color(0xFFFEF2F2), AppTheme.primaryRose)
+                else if (way.isGibGonderildi)
+                  _buildBadge('Gönderildi', const Color(0xFFF0FDF4), AppTheme.primaryEmerald)
+                else
+                  _buildBadge('Bekliyor', const Color(0xFFFFFBEB), AppTheme.primaryAmber),
+                const SizedBox(width: 6),
+                if (way.isFaturalandi)
+                  _buildBadge(
+                    way.faturaNo.isNotEmpty ? 'Faturalandı (${way.faturaNo})' : 'Faturalandı',
+                    const Color(0xFFEFF6FF),
+                    AppTheme.primaryBlue,
+                  )
+                else
+                  _buildBadge('Faturalanmadı', const Color(0xFFFFF7ED), const Color(0xFFEA580C)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
