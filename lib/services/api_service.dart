@@ -7,6 +7,7 @@ import '../models/bank_model.dart';
 import '../models/cari_model.dart';
 import '../models/baglanti_model.dart';
 import '../models/fatura_irsaliye_model.dart';
+import '../models/pending_email_model.dart';
 
 class ApiService {
   static String currentUser = '';
@@ -321,6 +322,89 @@ class ApiService {
       'kullanici': username ?? currentUser,
     });
     return res.data != null && res.data['ok'] == true;
+  }
+
+  // Banka e-postalarından okunan, onay bekleyen (ve son onaylanmış) işlemler.
+  Future<Map<String, dynamic>> getPendingEmails() async {
+    syncUserHeader();
+    final res = await _dio.get('emails/pending', queryParameters: {'company': activeCompany});
+    final data = res.data;
+    if (data is Map) {
+      final pendingRaw = (data['pending'] as List?) ?? [];
+      final approvedRaw = (data['approved'] as List?) ?? [];
+      final cariRaw = (data['cariOptions'] as List?) ?? [];
+      final bankRaw = (data['bankOptions'] as List?) ?? [];
+      return {
+        'pending': pendingRaw.map((e) => PendingEmail.fromJson(Map<String, dynamic>.from(e))).toList(),
+        'approved': approvedRaw.map((e) => ApprovedEmail.fromJson(Map<String, dynamic>.from(e))).toList(),
+        'cariOptions': cariRaw.map((e) => e.toString()).toList(),
+        'bankOptions': bankRaw.map((e) => e.toString()).toList(),
+      };
+    }
+    return {
+      'pending': <PendingEmail>[],
+      'approved': <ApprovedEmail>[],
+      'cariOptions': <String>[],
+      'bankOptions': <String>[],
+    };
+  }
+
+  // Gelen kutusunu tarayıp yeni banka dekontu e-postalarını onay havuzuna ekler.
+  Future<int> fetchNewEmails() async {
+    syncUserHeader();
+    try {
+      final res = await _dio.post('emails/fetch', data: {'company': activeCompany});
+      final data = res.data;
+      if (data is Map && data['inserted'] != null) {
+        final v = data['inserted'];
+        return v is num ? v.toInt() : int.tryParse(v.toString()) ?? 0;
+      }
+      return 0;
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final err = (data is Map) ? (data['error'] ?? e.message) : e.message;
+      throw Exception(err ?? 'Bağlantı hatası');
+    }
+  }
+
+  // Seçilen bekleyen e-posta işlemlerini Zirve'ye işler.
+  // items: { id: { 'cariName': ..., 'bankName': ..., 'eftFee': ... } }
+  Future<void> approveEmails(List<String> ids, Map<String, Map<String, String>> items) async {
+    syncUserHeader();
+    try {
+      final res = await _dio.post('emails/approve', data: {
+        'company': activeCompany,
+        'ids': ids,
+        'items': items,
+        'username': currentUser,
+      });
+      if (res.data == null || res.data['ok'] != true) {
+        final err = (res.data is Map) ? res.data['error'] : null;
+        throw Exception(err ?? 'Onaylama başarısız oldu.');
+      }
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final err = (data is Map) ? (data['error'] ?? e.message) : e.message;
+      throw Exception(err ?? 'Bağlantı hatası');
+    }
+  }
+
+  Future<void> deleteEmails(List<String> ids) async {
+    syncUserHeader();
+    try {
+      final res = await _dio.post('emails/delete', data: {
+        'company': activeCompany,
+        'ids': ids,
+      });
+      if (res.data == null || res.data['ok'] != true) {
+        final err = (res.data is Map) ? res.data['error'] : null;
+        throw Exception(err ?? 'Silme başarısız oldu.');
+      }
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final err = (data is Map) ? (data['error'] ?? e.message) : e.message;
+      throw Exception(err ?? 'Bağlantı hatası');
+    }
   }
 
   Future<bool> deleteBankTransaction(dynamic ref) async {
