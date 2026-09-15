@@ -435,69 +435,56 @@ class _BankListScreenState extends State<BankListScreen> {
             const SizedBox(height: 6),
 
             // Banka Kartları Listesi (Görsel 2 tasarımı)
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryBlue))
-                  : RefreshIndicator(
-                      onRefresh: _loadData,
-                      color: AppTheme.primaryBlue,
-                      child: ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        children: [
-                          if (mainBanks.isEmpty && hiddenBanks.isEmpty)
-                            const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(32),
-                                child: Text('Kayıtlı banka hesabı bulunamadı.', style: TextStyle(color: AppTheme.slate400)),
-                              ),
-                            )
-                          else ...[
-                            ...mainBanks.map((b) => _buildBankCard(b, isMain: true)),
+            if (mainBanks.isEmpty && hiddenBanks.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Text('Kayıtlı banka hesabı bulunamadı.', style: TextStyle(color: AppTheme.slate400)),
+                ),
+              )
+            else ...[
+              ...mainBanks.map((b) => _buildBankCard(b, isMain: true)),
 
-                            if (hiddenBanks.isNotEmpty) ...[
-                              const SizedBox(height: 12),
-                              InkWell(
-                                onTap: () => setState(() => _showHidden = !_showHidden),
-                                borderRadius: BorderRadius.circular(14),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: AppTheme.slate200),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.inventory_2_outlined, size: 16, color: AppTheme.slate500),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'DİĞER BANKALAR (${hiddenBanks.length})',
-                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate700),
-                                          ),
-                                        ],
-                                      ),
-                                      Icon(
-                                        _showHidden ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
-                                        color: AppTheme.slate500,
-                                        size: 20,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              if (_showHidden) ...[
-                                const SizedBox(height: 8),
-                                ...hiddenBanks.map((b) => _buildBankCard(b, isMain: false)),
-                              ],
-                            ],
-                          ],
-                        ],
-                      ),
+              if (hiddenBanks.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () => setState(() => _showHidden = !_showHidden),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppTheme.slate200),
                     ),
-            ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.inventory_2_outlined, size: 16, color: AppTheme.slate500),
+                            const SizedBox(width: 8),
+                            Text(
+                              'DİĞER BANKALAR (${hiddenBanks.length})',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate700),
+                            ),
+                          ],
+                        ),
+                        Icon(
+                          _showHidden ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                          color: AppTheme.slate500,
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (_showHidden) ...[
+                  const SizedBox(height: 8),
+                  ...hiddenBanks.map((b) => _buildBankCard(b, isMain: false)),
+                ],
+              ],
+            ],
           ],
                 ),
         ),
