@@ -451,11 +451,16 @@ class _EmailApprovalsScreenState extends State<EmailApprovalsScreen> {
               Text(_dateFormat.format(p.date), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
               const Spacer(),
               Text('${_currency.format(p.amount)} TL', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
-              IconButton(
-                onPressed: () => _deleteEmail(p),
-                icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.slate400),
-                constraints: const BoxConstraints(),
-                padding: const EdgeInsets.only(left: 8),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _deleteEmail(p),
+                  borderRadius: BorderRadius.circular(20),
+                  child: const Padding(
+                    padding: EdgeInsets.all(10),
+                    child: Icon(Icons.delete_outline_rounded, size: 19, color: AppTheme.slate400),
+                  ),
+                ),
               ),
             ],
           ),
