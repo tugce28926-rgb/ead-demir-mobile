@@ -29,6 +29,13 @@ class _EmailApprovalsScreenState extends State<EmailApprovalsScreen> {
   final Map<String, String> _selectedBank = {};
   final Map<String, String> _selectedCari = {};
   final Map<String, TextEditingController> _eftControllers = {};
+  // Kullanıcı bir kayıt için elle banka/cari seçtiyse id'si buraya eklenir —
+  // sadece bunlar için mevcut seçim korunur, geri kalanı her yenilemede
+  // sunucunun en güncel önerisiyle üzerine yazılır (aksi halde ilk görülen
+  // öneri kalıcı olarak "kilitleniyordu", backend düzelse bile ekran hiç
+  // güncellenmiyordu).
+  final Set<String> _manualBankIds = {};
+  final Set<String> _manualCariIds = {};
 
   @override
   void initState() {
@@ -59,6 +66,8 @@ class _EmailApprovalsScreenState extends State<EmailApprovalsScreen> {
       _selected.removeWhere((id, _) => !stillPendingIds.contains(id));
       _selectedBank.removeWhere((id, _) => !stillPendingIds.contains(id));
       _selectedCari.removeWhere((id, _) => !stillPendingIds.contains(id));
+      _manualBankIds.removeWhere((id) => !stillPendingIds.contains(id));
+      _manualCariIds.removeWhere((id) => !stillPendingIds.contains(id));
       _eftControllers.removeWhere((id, c) {
         final drop = !stillPendingIds.contains(id);
         if (drop) c.dispose();
@@ -67,8 +76,17 @@ class _EmailApprovalsScreenState extends State<EmailApprovalsScreen> {
 
       for (final p in pending) {
         _selected.putIfAbsent(p.id, () => true);
-        _selectedBank.putIfAbsent(p.id, () => p.suggestedBank.isNotEmpty ? p.suggestedBank : (bankOptions.isNotEmpty ? bankOptions.first : ''));
-        _selectedCari.putIfAbsent(p.id, () => p.suggestedCari);
+        // Sunucu bir banka önerisi bulamazsa alfabetik ilk bankayı seçili göstermek
+        // yanlış bankaya kayıt atılmasına yol açabilir — öneri yoksa alan boş kalıp
+        // kullanıcının elle seçmesi bekleniyor (cari alanında zaten böyle çalışıyordu).
+        // Kullanıcı elle seçim yapmadıysa her yenilemede en güncel öneriyle
+        // üzerine yazılır (aksi halde eski/yanlış bir öneri kalıcı kilitlenirdi).
+        if (!_manualBankIds.contains(p.id)) {
+          _selectedBank[p.id] = p.suggestedBank;
+        }
+        if (!_manualCariIds.contains(p.id)) {
+          _selectedCari[p.id] = p.suggestedCari;
+        }
         _eftControllers.putIfAbsent(p.id, () => TextEditingController(text: p.embeddedMasraf > 0 ? _currency.format(p.embeddedMasraf).trim() : ''));
       }
 
@@ -218,12 +236,25 @@ class _EmailApprovalsScreenState extends State<EmailApprovalsScreen> {
     return false;
   }
 
+  bool get _hasMissingBank {
+    for (final p in _pending) {
+      if (_selected[p.id] != true) continue;
+      final bank = _selectedBank[p.id] ?? '';
+      if (bank.trim().isEmpty) return true;
+    }
+    return false;
+  }
+
   int get _selectedCount => _pending.where((p) => _selected[p.id] == true).length;
 
   Future<void> _approveSelected() async {
     final selectedIds = _pending.where((p) => _selected[p.id] == true).map((p) => p.id).toList();
     if (selectedIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lütfen Zirve\'ye işlemek için en az bir e-posta seçin.')));
+      return;
+    }
+    if (_hasMissingBank) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: AppTheme.primaryRose, content: Text('Lütfen seçili işlemler için banka seçimini yapın.')));
       return;
     }
     if (_hasMissingCari) {
@@ -241,11 +272,17 @@ class _EmailApprovalsScreenState extends State<EmailApprovalsScreen> {
           'eftFee': _eftControllers[id]?.text ?? '',
         };
       }
-      await _apiService.approveEmails(selectedIds, items);
+      final warning = await _apiService.approveEmails(selectedIds, items);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(backgroundColor: AppTheme.primaryEmerald, content: Text('${selectedIds.length} işlem Zirve\'ye işlendi.')),
-        );
+        if (warning != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(backgroundColor: AppTheme.primaryAmber, content: Text('${selectedIds.length} işlem Zirve\'ye işlendi ama: $warning')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(backgroundColor: AppTheme.primaryEmerald, content: Text('${selectedIds.length} işlem Zirve\'ye işlendi.')),
+          );
+        }
       }
       await _loadData();
     } catch (e) {
@@ -486,11 +523,15 @@ class _EmailApprovalsScreenState extends State<EmailApprovalsScreen> {
           _buildFieldPicker(
             label: 'Banka Seçimi',
             value: bank.isNotEmpty ? bank : 'Seçiniz...',
+            highlight: bank.isEmpty,
             onTap: () => _pickFromList(
               title: 'Banka Seçin',
               options: _bankOptions,
               current: bank,
-              onPicked: (v) => setState(() => _selectedBank[p.id] = v),
+              onPicked: (v) => setState(() {
+                _selectedBank[p.id] = v;
+                _manualBankIds.add(p.id);
+              }),
             ),
           ),
           const SizedBox(height: 8),
@@ -502,7 +543,10 @@ class _EmailApprovalsScreenState extends State<EmailApprovalsScreen> {
               title: p.isVirman ? 'Karşı Banka Seçin' : 'Cari Seçin',
               options: p.isVirman ? _bankOptions : _cariOptions,
               current: cari,
-              onPicked: (v) => setState(() => _selectedCari[p.id] = v),
+              onPicked: (v) => setState(() {
+                _selectedCari[p.id] = v;
+                _manualCariIds.add(p.id);
+              }),
             ),
           ),
           if (showEft) ...[
