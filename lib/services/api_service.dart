@@ -165,7 +165,10 @@ class ApiService {
     return [];
   }
 
-  Future<bool> createBankTransaction({
+  // Dönüş: null = temiz başarı, boş olmayan String = kayıt Zirve'ye işlendi
+  // AMA muhasebe fişi (banka.rs'teki GMHK kontrolüyle aynı) oluşturulamadı —
+  // bu uyarı metnini kullanıcıya göstermek çağıranın sorumluluğu.
+  Future<String?> createBankTransaction({
     required String operationType,
     required String sourceBank,
     String? targetBank,
@@ -193,7 +196,13 @@ class ApiService {
         'username': username ?? currentUser,
         'kullanici': username ?? currentUser,
       });
-      if (res.data != null && res.data['ok'] == true) return true;
+      if (res.data != null && res.data['ok'] == true) {
+        final warnings = res.data['warnings'];
+        if (warnings is List && warnings.isNotEmpty) {
+          return warnings.join(' | ');
+        }
+        return null;
+      }
       final err = (res.data is Map) ? res.data['error'] : null;
       throw Exception(err ?? 'Kayıt başarısız oldu.');
     } on DioException catch (e) {
@@ -300,7 +309,10 @@ class ApiService {
     return Uint8List.fromList(res.data);
   }
 
-  Future<bool> createPosTahsilat({
+  // Dönüş: null = temiz başarı, boş olmayan String = POS kaydı Zirve'ye
+  // işlendi AMA muhasebe fişi (GMHK kontrolü) oluşturulamadı. Kayıt
+  // başarısız olursa (ok:false / ağ hatası) Exception fırlatır.
+  Future<String?> createPosTahsilat({
     required String bankName,
     required String cariName,
     String? cariRef,
@@ -310,18 +322,29 @@ class ApiService {
     String? username,
   }) async {
     syncUserHeader();
-    final res = await _dio.post('pos-tahsilat', data: {
-      'company': activeCompany,
-      'bankName': bankName,
-      'cariName': cariName,
-      'cariRef': cariRef,
-      'amount': amount,
-      'description': description,
-      'date': date?.toIso8601String(),
-      'username': username ?? currentUser,
-      'kullanici': username ?? currentUser,
-    });
-    return res.data != null && res.data['ok'] == true;
+    try {
+      final res = await _dio.post('pos-tahsilat', data: {
+        'company': activeCompany,
+        'bankName': bankName,
+        'cariName': cariName,
+        'cariRef': cariRef,
+        'amount': amount,
+        'description': description,
+        'date': date?.toIso8601String(),
+        'username': username ?? currentUser,
+        'kullanici': username ?? currentUser,
+      });
+      if (res.data == null || res.data['ok'] != true) {
+        final err = (res.data is Map) ? res.data['error'] : null;
+        throw Exception(err ?? 'POS kaydı başarısız oldu.');
+      }
+      final warning = res.data['warning'];
+      return (warning is String && warning.isNotEmpty) ? warning : null;
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final err = (data is Map) ? (data['error'] ?? e.message) : e.message;
+      throw Exception(err ?? 'Bağlantı hatası');
+    }
   }
 
   // Banka e-postalarından okunan, onay bekleyen (ve son onaylanmış) işlemler.
@@ -369,7 +392,9 @@ class ApiService {
 
   // Seçilen bekleyen e-posta işlemlerini Zirve'ye işler.
   // items: { id: { 'cariName': ..., 'bankName': ..., 'eftFee': ... } }
-  Future<void> approveEmails(List<String> ids, Map<String, Map<String, String>> items) async {
+  // Dönüş: null = temiz başarı, boş olmayan String = kayıtlar Zirve'ye
+  // işlendi AMA en az birinin muhasebe fişi (GMHK kontrolü) oluşturulamadı.
+  Future<String?> approveEmails(List<String> ids, Map<String, Map<String, String>> items) async {
     syncUserHeader();
     try {
       final res = await _dio.post('emails/approve', data: {
@@ -382,6 +407,11 @@ class ApiService {
         final err = (res.data is Map) ? res.data['error'] : null;
         throw Exception(err ?? 'Onaylama başarısız oldu.');
       }
+      final warnings = res.data['warnings'];
+      if (warnings is List && warnings.isNotEmpty) {
+        return warnings.join(' | ');
+      }
+      return null;
     } on DioException catch (e) {
       final data = e.response?.data;
       final err = (data is Map) ? (data['error'] ?? e.message) : e.message;
