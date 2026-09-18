@@ -231,7 +231,7 @@ class _BankListScreenState extends State<BankListScreen> {
                                 }
                                 setModalState(() => isSubmitting = true);
                                 try {
-                                  final ok = await _apiService.createPosTahsilat(
+                                  final warning = await _apiService.createPosTahsilat(
                                     bankName: selectedBank.bankName,
                                     cariName: finalCariName,
                                     cariRef: selectedCari?.cariKod,
@@ -239,21 +239,17 @@ class _BankListScreenState extends State<BankListScreen> {
                                     description: descController.text,
                                   );
                                   setModalState(() => isSubmitting = false);
-                                  if (ok) {
-                                    if (context.mounted) {
-                                      Navigator.pop(ctx);
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          backgroundColor: AppTheme.primaryEmerald,
-                                          content: Text('POS Tahsilatı Zirveye başarıyla işlendi!'),
-                                        ),
-                                      );
-                                      _loadData();
-                                    }
-                                  } else {
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: AppTheme.primaryRose, content: Text('POS kaydı başarısız oldu.')));
-                                    }
+                                  if (context.mounted) {
+                                    Navigator.pop(ctx);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        backgroundColor: warning != null ? AppTheme.primaryAmber : AppTheme.primaryEmerald,
+                                        content: Text(warning != null
+                                            ? 'POS Tahsilatı Zirve\'ye işlendi ama: $warning'
+                                            : 'POS Tahsilatı Zirveye başarıyla işlendi!'),
+                                      ),
+                                    );
+                                    _loadData();
                                   }
                                 } catch (err) {
                                   setModalState(() => isSubmitting = false);

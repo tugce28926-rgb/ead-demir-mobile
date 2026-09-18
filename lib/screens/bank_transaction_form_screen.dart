@@ -32,11 +32,12 @@ class _BankTransactionFormScreenState extends State<BankTransactionFormScreen> {
 
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
+  final TextEditingController _cariSearchController = TextEditingController();
   final TextEditingController _eftFeeController = TextEditingController();
 
   List<CariSummary> _caris = [];
   List<Map<String, dynamic>> _giders = [];
-  String? _selectedGiderName;
+  Map<String, dynamic>? _selectedGider;
   bool _isLoadingCaris = false;
   bool _isSubmitting = false;
 
@@ -79,7 +80,7 @@ class _BankTransactionFormScreenState extends State<BankTransactionFormScreen> {
 
     setState(() => _isSubmitting = true);
     try {
-      final ok = await _apiService.createBankTransaction(
+      final warning = await _apiService.createBankTransaction(
         operationType: _operationType,
         sourceBank: _sourceBank.bankName,
         targetBank: _targetBank?.bankName,
@@ -87,21 +88,22 @@ class _BankTransactionFormScreenState extends State<BankTransactionFormScreen> {
         cariName: _selectedCari?.cariAd,
         amount: amount,
         description: _descController.text,
-        expenseItem: _selectedGiderName,
+        expenseItem: _selectedGider?['GIDERADI']?.toString() ?? _selectedGider?['GIDERKOD']?.toString(),
         eftFee: eftFee,
       );
 
       setState(() => _isSubmitting = false);
-      if (ok) {
-        if (!mounted) return;
+      if (!mounted) return;
+      if (warning != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(backgroundColor: AppTheme.primaryAmber, content: Text('Kayıt Zirve\'ye işlendi ama: $warning')),
+        );
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(backgroundColor: AppTheme.primaryEmerald, content: Text('İşlem Zirve veritabanına başarıyla kaydedildi!')),
         );
-        Navigator.pop(context, true);
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Kayıt başarısız oldu.')));
       }
+      Navigator.pop(context, true);
     } catch (e) {
       setState(() => _isSubmitting = false);
       if (!mounted) return;
@@ -155,7 +157,7 @@ class _BankTransactionFormScreenState extends State<BankTransactionFormScreen> {
                   const Text('KAYNAK BANKA (HESAP)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
                   const SizedBox(height: 4),
                   Text(_sourceBank.bankName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
-                  Text('Mevcut Bakiye: ${currency.format(_sourceBank.bakiye)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
+                  Text('Mevcut Bakiye: ' + currency.format(_sourceBank.bakiye), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
                 ],
               ),
             ),
@@ -179,7 +181,7 @@ class _BankTransactionFormScreenState extends State<BankTransactionFormScreen> {
                       value: _targetBank,
                       decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
                       items: otherBanks.map((b) {
-                        return DropdownMenuItem(value: b, child: Text('${b.bankName} (${currency.format(b.bakiye)})', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)));
+                        return DropdownMenuItem(value: b, child: Text('${b.bankName} (' + currency.format(b.bakiye) + ')', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)));
                       }).toList(),
                       onChanged: (val) => setState(() => _targetBank = val),
                     ),
@@ -280,18 +282,14 @@ class _BankTransactionFormScreenState extends State<BankTransactionFormScreen> {
                   children: [
                     const Text('GİDER KALEMİ', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
                     const SizedBox(height: 6),
-                    DropdownButtonFormField<String>(
-                      value: _selectedGiderName,
+                    DropdownButtonFormField<Map<String, dynamic>>(
+                      value: _selectedGider,
                       isExpanded: true,
                       decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
                       items: _giders.map((g) {
-                        final gName = (g['GIDERADI'] ?? g['GIDERKOD'] ?? '').toString();
-                        return DropdownMenuItem<String>(
-                          value: gName,
-                          child: Text('${g['GIDERKOD'] ?? ''} - $gName', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
-                        );
+                        return DropdownMenuItem(value: g, child: Text('${g['GIDERKOD']} - ${g['GIDERADI']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis));
                       }).toList(),
-                      onChanged: (val) => setState(() => _selectedGiderName = val),
+                      onChanged: (val) => setState(() => _selectedGider = val),
                     ),
                   ],
                 ),
