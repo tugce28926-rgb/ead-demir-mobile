@@ -602,24 +602,46 @@ class _EmailApprovalsScreenState extends State<EmailApprovalsScreen> {
   }
 
   Widget _buildTypeBadge(String operationType) {
+    // "Zirve'ye İşlenmiş" listesi hem e-posta onaylarından hem de Zirve'den
+    // toplu senkronize edilen (refreshSingleBankFromZirve) kayıtlardan
+    // geliyor — ikincisinde 'pos', 'gonderilen-havale', 'tahsilat', 'gider'
+    // gibi ek operationType değerleri de çıkabiliyor. Bunlar özellikle
+    // ele alınmazsa hepsi yanlışlıkla "Giden Havale" gösteren else'e
+    // düşüyordu (POS'un yanlış görünmesinin sebebi buydu).
     late Color bg, fg;
     late String text;
     late IconData icon;
-    if (operationType == 'virman') {
+    final op = operationType.toLowerCase();
+    if (op == 'virman') {
       bg = const Color(0xFFF3E8FF);
       fg = const Color(0xFF7C3AED);
       text = 'Virman';
       icon = Icons.swap_horiz_rounded;
-    } else if (operationType == 'gelen-havale') {
+    } else if (op == 'pos') {
+      bg = const Color(0xFFD1FAE5);
+      fg = AppTheme.primaryEmerald;
+      text = 'POS Tahsilatı';
+      icon = Icons.credit_card_rounded;
+    } else if (op == 'gider') {
+      bg = const Color(0xFFFFE4E6);
+      fg = AppTheme.primaryRose;
+      text = 'Gider';
+      icon = Icons.receipt_long_rounded;
+    } else if (op == 'gelen-havale' || op == 'tahsilat' || op == 'gelir') {
       bg = const Color(0xFFD1FAE5);
       fg = AppTheme.primaryEmerald;
       text = 'Gelen Havale';
       icon = Icons.arrow_downward_rounded;
-    } else {
+    } else if (op == 'giden-havale' || op == 'gonderilen-havale' || op == 'odeme') {
       bg = const Color(0xFFFFE4E6);
       fg = AppTheme.primaryRose;
       text = 'Giden Havale';
       icon = Icons.arrow_upward_rounded;
+    } else {
+      bg = AppTheme.slate100;
+      fg = AppTheme.slate500;
+      text = 'İşlem';
+      icon = Icons.swap_vert_rounded;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -636,8 +658,9 @@ class _EmailApprovalsScreenState extends State<EmailApprovalsScreen> {
   }
 
   Widget _buildApprovedCard(ApprovedEmail a) {
-    final isGelir = a.operationType == 'gelen-havale';
-    final isVirman = a.operationType == 'virman';
+    final op = a.operationType.toLowerCase();
+    final isGelir = op == 'gelen-havale' || op == 'pos' || op == 'tahsilat' || op == 'gelir';
+    final isVirman = op == 'virman';
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
