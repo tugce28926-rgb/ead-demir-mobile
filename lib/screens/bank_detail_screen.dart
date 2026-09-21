@@ -26,6 +26,12 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
 
   List<BankTransaction> _transactions = [];
   bool _isLoading = true;
+  // widget.bank, ekran ilk açıldığındaki bakiyeyle sabit kalıyor — bankanın
+  // içindeyken bir işlem yapılınca (havale/POS/virman/gider) bakiye burada
+  // hiç güncellenmiyordu, sadece işlem listesi tazeleniyordu. Artık her
+  // yenilemede bankalar listesi de tekrar çekilip güncel bakiye buraya
+  // yazılıyor.
+  late BankAccount _currentBank = widget.bank;
 
   @override
   void initState() {
@@ -37,8 +43,17 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
     setState(() => _isLoading = true);
     try {
       final list = await _apiService.getBankTransactions(widget.bank.bankName);
+      final banks = await _apiService.getBanks();
+      BankAccount? updatedBank;
+      for (final b in banks) {
+        if (b.bankName == widget.bank.bankName) {
+          updatedBank = b;
+          break;
+        }
+      }
       setState(() {
         _transactions = list;
+        if (updatedBank != null) _currentBank = updatedBank;
         _isLoading = false;
       });
     } catch (e) {
@@ -73,16 +88,16 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(widget.bank.bankName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+                        Text(_currentBank.bankName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
                         const SizedBox(height: 4),
-                        if (widget.bank.iban.isNotEmpty)
-                          Text('IBAN: ${widget.bank.iban}', style: const TextStyle(fontSize: 10, color: AppTheme.slate300, fontFamily: 'monospace')),
+                        if (_currentBank.iban.isNotEmpty)
+                          Text('IBAN: ${_currentBank.iban}', style: const TextStyle(fontSize: 10, color: AppTheme.slate300, fontFamily: 'monospace')),
                         const SizedBox(height: 10),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text('GÜNCEL BAKİYE:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.slate400)),
-                            Text(_currency.format(widget.bank.bakiye), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
+                            Text(_currency.format(_currentBank.bakiye), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
                           ],
                         ),
                       ],
@@ -141,7 +156,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => BankTransactionFormScreen(sourceBank: widget.bank, allBanks: widget.allBanks, initialType: type),
+              builder: (_) => BankTransactionFormScreen(sourceBank: _currentBank, allBanks: widget.allBanks, initialType: type),
             ),
           ).then((_) => _loadTransactions());
         },
