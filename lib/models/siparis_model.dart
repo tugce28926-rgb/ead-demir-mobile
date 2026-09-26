@@ -2,6 +2,24 @@ double _toDouble(dynamic v) => v is num ? v.toDouble() : (double.tryParse(v?.toS
 int _toInt(dynamic v) => v is num ? v.toInt() : (int.tryParse(v?.toString() ?? '') ?? 0);
 bool _toBool(dynamic v) => v == true || v == 'true';
 
+// Zirve CARIGEN'den (ALICIORSATICI=2) gelen tedarikçi kaydı — "Yeni Sipariş"
+// formunda tedarikçi seçimi için kullanılır.
+class Tedarikci {
+  final int ref;
+  final String ad;
+  final String vergiNo;
+
+  Tedarikci({required this.ref, required this.ad, this.vergiNo = ''});
+
+  factory Tedarikci.fromJson(Map<String, dynamic> json) {
+    return Tedarikci(
+      ref: _toInt(json['ref']),
+      ad: (json['ad'] ?? '').toString(),
+      vergiNo: (json['vergiNo'] ?? '').toString(),
+    );
+  }
+}
+
 class Siparis {
   final String id;
   final int tedarikciRef;
