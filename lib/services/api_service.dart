@@ -305,8 +305,10 @@ class ApiService {
     return [];
   }
 
-  // Yeni sipariş oluşturur; SADECE bu alanlar gönderilir (ödeme/fatura/nakliye/gizli
-  // gibi diğer tüm alanlar mobilden hiç yazılmaz).
+  // Yeni sipariş oluşturur; SADECE bu alanlar gönderilir (ödeme/fatura/nakliye
+  // TUTARI/gizli gibi diğer tüm alanlar mobilden hiç yazılmaz). notMetni ve
+  // nakliyeDahil, masaüstünün "Yeni Sipariş" formunda da oluşturma anında
+  // toplanan iki alan — sonradan yapılan bir işlem değil.
   Future<void> createSiparis({
     required int tedarikciRef,
     required String tedarikciAd,
@@ -316,6 +318,8 @@ class ApiService {
     required double miktarKg,
     required double toplamTutar,
     required String odemeTarihi,
+    String? notMetni,
+    bool nakliyeDahil = false,
   }) async {
     syncUserHeader();
     final res = await _dio.post('demir-alislari', data: {
@@ -327,6 +331,8 @@ class ApiService {
       'miktarKg': miktarKg,
       'toplamTutar': toplamTutar,
       'odemeTarihi': odemeTarihi,
+      'notMetni': notMetni,
+      'nakliyeDahil': nakliyeDahil,
     });
     if (res.data == null || res.data['ok'] != true) {
       throw Exception(res.data?['error'] ?? 'Sipariş oluşturulamadı.');
