@@ -272,6 +272,17 @@ class ApiService {
     return 0.0;
   }
 
+  // Tedarikçi listesi (Zirve CARIGEN, ALICIORSATICI=2) — "Yeni Sipariş" formunda seçim için.
+  Future<List<Tedarikci>> getTedarikciler() async {
+    syncUserHeader();
+    final res = await _dio.get('demir-alislari/tedarikciler', queryParameters: {'company': activeCompany});
+    final data = res.data;
+    if (data is Map && data['tedarikciler'] is List) {
+      return (data['tedarikciler'] as List).map((e) => Tedarikci.fromJson(Map<String, dynamic>.from(e))).toList();
+    }
+    return [];
+  }
+
   // Demir Alışları (FerroxPro Atlas -> siparisler / depo_girisleri). Şirket
   // bazlı bir Zirve kavramı değil, net-durum gibi tek ortak Mongo koleksiyonu.
   Future<List<Siparis>> getDemirAlislari() async {
