@@ -36,4 +36,10 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
+
+    <!-- Android 11+ paket görünürlüğü: WhatsApp'ı whatsapp://send ile açabilmek için gerekli -->
+    <queries>
+        <package android:name="com.whatsapp"/>
+        <package android:name="com.whatsapp.w4b"/>
+    </queries>
 </manifest>
