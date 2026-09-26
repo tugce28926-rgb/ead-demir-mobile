@@ -689,7 +689,7 @@ class _YeniSiparisFormSheetState extends State<_YeniSiparisFormSheet> {
   bool _toplamManuelDegistirildi = false;
   bool _isAutoUpdatingToplam = false;
 
-  final NumberFormat _dateFmt = DateFormat('dd.MM.yyyy');
+  final DateFormat _dateFmt = DateFormat('dd.MM.yyyy');
 
   @override
   void initState() {
