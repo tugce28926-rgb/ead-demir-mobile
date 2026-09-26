@@ -35,6 +35,23 @@ class _DemirAlislariScreenState extends State<DemirAlislariScreen> {
     return temel.where((s) => _faturaGoster ? s.faturaGeldi : !s.faturaGeldi).toList();
   }
 
+  // "Ödemesi Gelenler": ödeme tarihi bugüne kadar (bugün dahil) gelmiş ama hâlâ
+  // ödenmemiş siparişler — masaüstündeki "Günlük Ödemeler" ekranının salt
+  // okunur, tarihe bağlı görünümüyle aynı mantık. En yakın/geciken en üstte.
+  List<Siparis> get _odemesiGelenSiparisler {
+    final bugun = DateTime.now();
+    final bugunStr = '${bugun.year.toString().padLeft(4, '0')}-${bugun.month.toString().padLeft(2, '0')}-${bugun.day.toString().padLeft(2, '0')}';
+    final liste = _siparisler.where((s) => !s.odendi && s.odemeTarihi.isNotEmpty && s.odemeTarihi.compareTo(bugunStr) <= 0).toList();
+    liste.sort((a, b) => a.odemeTarihi.compareTo(b.odemeTarihi));
+    return liste;
+  }
+
+  // "Nakliye Ödemeleri": depoya gelmiş ama nakliyesi ne fiyata dahil edilmiş
+  // ne de ayrıca ödenmiş siparişler — masaüstündeki "Ödenmeyen Nakliyeler" modu.
+  List<Siparis> get _nakliyeOdemesiGelenSiparisler {
+    return _siparisler.where((s) => s.depoyaGeldi && !s.nakliyeDahil && !s.nakliyeOdendi).toList();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -92,18 +109,20 @@ class _DemirAlislariScreenState extends State<DemirAlislariScreen> {
                             padding: const EdgeInsets.all(14),
                             children: [_buildErrorState(_error!)],
                           )
-                        : _gorunurListe.isEmpty
-                            ? ListView(
-                                padding: const EdgeInsets.all(14),
-                                children: [_buildEmptyState(_activeTab == 'beklemede' ? 'Bekleyen sipariş yok.' : 'Depoya gelen sipariş yok.')],
-                              )
-                            : ListView.builder(
-                                padding: const EdgeInsets.fromLTRB(14, 14, 14, 90),
-                                itemCount: _gorunurListe.length,
-                                itemBuilder: (context, index) => _activeTab == 'beklemede'
-                                    ? _buildBekleyenCard(_gorunurListe[index])
-                                    : _buildDepodaCard(_gorunurListe[index]),
-                              ),
+                        : _activeTab == 'odeme'
+                            ? _buildOdemeGelenlerListesi()
+                            : _gorunurListe.isEmpty
+                                ? ListView(
+                                    padding: const EdgeInsets.all(14),
+                                    children: [_buildEmptyState(_activeTab == 'beklemede' ? 'Bekleyen sipariş yok.' : 'Depoya gelen sipariş yok.')],
+                                  )
+                                : ListView.builder(
+                                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 90),
+                                    itemCount: _gorunurListe.length,
+                                    itemBuilder: (context, index) => _activeTab == 'beklemede'
+                                        ? _buildBekleyenCard(_gorunurListe[index])
+                                        : _buildDepodaCard(_gorunurListe[index]),
+                                  ),
                   ),
           ),
         ],
@@ -119,9 +138,11 @@ class _DemirAlislariScreenState extends State<DemirAlislariScreen> {
         children: [
           Row(
             children: [
-              Expanded(child: _buildTab('Bekleyen Siparişler', 'beklemede')),
-              const SizedBox(width: 8),
+              Expanded(child: _buildTab('Bekleyen', 'beklemede')),
+              const SizedBox(width: 6),
               Expanded(child: _buildTab('Depoya Gelenler', 'depoda')),
+              const SizedBox(width: 6),
+              Expanded(child: _buildTab('Ödemeler', 'odeme')),
             ],
           ),
           if (_activeTab == 'depoda') ...[
@@ -160,7 +181,9 @@ class _DemirAlislariScreenState extends State<DemirAlislariScreen> {
         child: Text(
           label,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: selected ? Colors.white : AppTheme.slate600),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: selected ? Colors.white : AppTheme.slate600),
         ),
       ),
     );
@@ -281,6 +304,107 @@ class _DemirAlislariScreenState extends State<DemirAlislariScreen> {
                 if (s.plakalar.isNotEmpty)
                   Expanded(child: _buildBadge(s.plakalar.join(', '), AppTheme.slate100, AppTheme.slate600)),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // "Ödemeler" sekmesi: masaüstündeki "Günlük Ödemeler" ekranının salt okunur
+  // görünümü — iki ayrı liste: vadesi gelmiş sipariş ödemeleri ve depoya gelmiş
+  // ama nakliyesi hâlâ ödenmemiş siparişler. Ödeme yapma/işaretleme YOK, sadece görüntüleme.
+  Widget _buildOdemeGelenlerListesi() {
+    final siparisOdemeleri = _odemesiGelenSiparisler;
+    final nakliyeOdemeleri = _nakliyeOdemesiGelenSiparisler;
+    if (siparisOdemeleri.isEmpty && nakliyeOdemeleri.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.all(14),
+        children: [_buildEmptyState('Ödemesi gelen sipariş veya nakliye yok.')],
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 90),
+      children: [
+        if (siparisOdemeleri.isNotEmpty) ...[
+          const Text('SİPARİŞ ÖDEMELERİ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
+          const SizedBox(height: 8),
+          ...siparisOdemeleri.map(_buildSiparisOdemesiCard),
+          const SizedBox(height: 10),
+        ],
+        if (nakliyeOdemeleri.isNotEmpty) ...[
+          const Text('NAKLİYE ÖDEMELERİ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
+          const SizedBox(height: 8),
+          ...nakliyeOdemeleri.map(_buildNakliyeOdemesiCard),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSiparisOdemesiCard(Siparis s) {
+    final bugun = DateTime.now();
+    final odemeTarihi = _parseTarih(s.odemeTarihi);
+    final gecikmeGunu = odemeTarihi == null ? 0 : DateTime(bugun.year, bugun.month, bugun.day).difference(DateTime(odemeTarihi.year, odemeTarihi.month, odemeTarihi.day)).inDays;
+    return InkWell(
+      onTap: () => _showSiparisDetail(s),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.slate200)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(s.tedarikciAd, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.slate900), maxLines: 1, overflow: TextOverflow.ellipsis),
+                ),
+                Text(_currency.format(s.toplamTutar), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Text('Ödeme Tarihi: ${_fmtTarih(s.odemeTarihi)}', style: const TextStyle(fontSize: 10, color: AppTheme.slate400)),
+                const SizedBox(width: 8),
+                if (gecikmeGunu > 0)
+                  _buildBadge('$gecikmeGunu GÜN GECİKTİ', const Color(0xFFFFF1F2), AppTheme.primaryRose)
+                else
+                  _buildBadge('BUGÜN', const Color(0xFFFFFBEB), AppTheme.primaryAmber),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNakliyeOdemesiCard(Siparis s) {
+    return InkWell(
+      onTap: () => _showSiparisDetail(s),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.slate200)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(s.tedarikciAd, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.slate900), maxLines: 1, overflow: TextOverflow.ellipsis),
+                ),
+                _buildBadge('NAKLİYE', const Color(0xFFFAF5FF), AppTheme.primaryPurple),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${_kgFormat.format(s.gelenKg)} KG geldi${s.plakalar.isNotEmpty ? ' • ${s.plakalar.join(', ')}' : ''}',
+              style: const TextStyle(fontSize: 10, color: AppTheme.slate400),
             ),
           ],
         ),
@@ -681,12 +805,15 @@ class _YeniSiparisFormSheetState extends State<_YeniSiparisFormSheet> {
   final _alimFiyatiCtrl = TextEditingController();
   // Masaüstündeki gibi (main.js: formatTRNumber(27400)) miktar hep bu değerle geliyor.
   final _miktarKgCtrl = TextEditingController(text: '27400');
-  final _toplamTutarCtrl = TextEditingController();
+  // Aynı tedarikçi/fiyat/miktarla birden fazla sipariş (araç) tek seferde
+  // girilebilsin diye — masaüstündeki "Sipariş Sayısı" ile birebir aynı:
+  // her biri AYRI bir sipariş kaydı olarak oluşturulur (tek kayıtta toplanmaz).
+  final _sayisiCtrl = TextEditingController(text: '1');
+  final _notCtrl = TextEditingController();
   DateTime _siparisTarihi = DateTime.now();
   late DateTime _odemeTarihi;
   bool _saving = false;
-  bool _toplamManuelDegistirildi = false;
-  bool _isAutoUpdatingToplam = false;
+  bool _nakliyeDahil = false;
   // Kullanıcı ödeme tarihini elle değiştirmediği sürece, sipariş tarihi
   // değiştikçe masaüstündeki gibi (haftaninCumaGunu) otomatik yeniden hesaplanır.
   bool _odemeElleDegisti = false;
@@ -709,19 +836,20 @@ class _YeniSiparisFormSheetState extends State<_YeniSiparisFormSheet> {
   Tedarikci? _secilenTedarikci;
 
   final DateFormat _dateFmt = DateFormat('dd.MM.yyyy');
+  final NumberFormat _currency = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 2);
+  final NumberFormat _kgFormat = NumberFormat('#,##0', 'tr_TR');
 
   @override
   void initState() {
     super.initState();
     _odemeTarihi = _haftaninCumaGunu(_siparisTarihi);
-    _alimFiyatiCtrl.addListener(_recalculateToplam);
-    _miktarKgCtrl.addListener(_recalculateToplam);
-    _toplamTutarCtrl.addListener(() {
-      if (!_isAutoUpdatingToplam) _toplamManuelDegistirildi = true;
-    });
+    // Toplam Miktar/Toplam Tutar özet kartları salt-okunur ve canlı hesaplanıyor;
+    // bu üç alandan biri değiştikçe sadece ekranı yeniden çizdiriyoruz.
+    final yenidenCiz = () => setState(() {});
+    _alimFiyatiCtrl.addListener(yenidenCiz);
+    _miktarKgCtrl.addListener(yenidenCiz);
+    _sayisiCtrl.addListener(yenidenCiz);
     _loadTedarikciler();
-    // İlk hesaplama: yukarıdaki 27400 varsayılan miktarı ve toplam tutarı otomatik doldursun.
-    _recalculateToplam();
   }
 
   Future<void> _loadTedarikciler() async {
@@ -734,18 +862,19 @@ class _YeniSiparisFormSheetState extends State<_YeniSiparisFormSheet> {
     }
   }
 
-  // alim_fiyati TON başınadır (masaüstündeki main.js ile aynı: toplam =
-  // (miktar_kg / 1000) * alim_fiyati) — KG başına değil.
-  void _recalculateToplam() {
-    if (_toplamManuelDegistirildi) return;
-    final alim = double.tryParse(_alimFiyatiCtrl.text.replaceAll(',', '.'));
-    final miktar = double.tryParse(_miktarKgCtrl.text.replaceAll(',', '.'));
-    if (alim != null && miktar != null) {
-      final toplam = (miktar / 1000) * alim;
-      _isAutoUpdatingToplam = true;
-      _toplamTutarCtrl.text = toplam.toStringAsFixed(2);
-      _isAutoUpdatingToplam = false;
-    }
+  // Masaüstündeki main.js:hesapla() ile birebir aynı mantık. alim_fiyati TON
+  // başınadır. "Toplam Tutar" özet kartı, tedarikçiye tevkifatlı olarak ne
+  // ödeneceğinin ÖN İZLEMESİDİR (toplamTutar/1.2*1.1) — her bir siparişe
+  // kaydedilecek toplam_tutar bundan farklı, bkz. _birimToplamTutar.
+  double get _fiyat => double.tryParse(_alimFiyatiCtrl.text.replaceAll(',', '.')) ?? 0;
+  double get _miktar => double.tryParse(_miktarKgCtrl.text.replaceAll(',', '.')) ?? 0;
+  int get _sayi => (int.tryParse(_sayisiCtrl.text.trim()) ?? 0).clamp(0, 999999).toInt();
+  double get _toplamKg => _miktar * _sayi;
+  // Tek bir siparişe (araca) kaydedilecek gerçek tutar — sayı ile çarpılmaz.
+  double get _birimToplamTutar => (_miktar / 1000) * _fiyat;
+  double get _toplamTutarOnizleme {
+    final toplamTutarHam = (_toplamKg / 1000) * _fiyat;
+    return (toplamTutarHam / 1.2) * 1.1;
   }
 
   Future<void> _pickDate(bool isSiparisTarihi) async {
@@ -773,18 +902,30 @@ class _YeniSiparisFormSheetState extends State<_YeniSiparisFormSheet> {
     if (!_formKey.currentState!.validate()) return;
     final tedarikci = _secilenTedarikci;
     if (tedarikci == null) return;
+    if (_miktar <= 0 || _fiyat <= 0 || _sayi <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(backgroundColor: AppTheme.primaryRose, content: Text('Lütfen miktar, alım fiyatı ve sipariş sayısını girin.')),
+      );
+      return;
+    }
     setState(() => _saving = true);
     try {
-      await widget.apiService.createSiparis(
-        tedarikciRef: tedarikci.ref,
-        tedarikciAd: tedarikci.ad,
-        siparisTarihi: DateFormat('yyyy-MM-dd').format(_siparisTarihi),
-        bolge: _bolgeCtrl.text.trim(),
-        alimFiyati: double.parse(_alimFiyatiCtrl.text.trim().replaceAll(',', '.')),
-        miktarKg: double.parse(_miktarKgCtrl.text.trim().replaceAll(',', '.')),
-        toplamTutar: double.parse(_toplamTutarCtrl.text.trim().replaceAll(',', '.')),
-        odemeTarihi: DateFormat('yyyy-MM-dd').format(_odemeTarihi),
-      );
+      // Masaüstündeki gibi (main.js:kaydet) "Sipariş Sayısı" kadar AYRI sipariş
+      // kaydı oluşturulur — tek kayıtta toplanmaz, her biri kendi id'sine sahip olur.
+      for (var i = 0; i < _sayi; i++) {
+        await widget.apiService.createSiparis(
+          tedarikciRef: tedarikci.ref,
+          tedarikciAd: tedarikci.ad,
+          siparisTarihi: DateFormat('yyyy-MM-dd').format(_siparisTarihi),
+          bolge: _bolgeCtrl.text.trim(),
+          alimFiyati: _fiyat,
+          miktarKg: _miktar,
+          toplamTutar: _birimToplamTutar,
+          odemeTarihi: DateFormat('yyyy-MM-dd').format(_odemeTarihi),
+          notMetni: _notCtrl.text.trim().isEmpty ? null : _notCtrl.text.trim(),
+          nakliyeDahil: _nakliyeDahil,
+        );
+      }
       if (mounted) Navigator.pop(context);
       widget.onCreated();
     } catch (e) {
@@ -871,6 +1012,23 @@ class _YeniSiparisFormSheetState extends State<_YeniSiparisFormSheet> {
     );
   }
 
+  // Masaüstündeki "Toplam Miktar/Toplam Tutar" özet kartları gibi salt okunur —
+  // kullanıcı bunu elle düzenlemiyor, Miktar/Fiyat/Sayı'dan otomatik hesaplanıyor.
+  Widget _buildOzetKart(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: AppTheme.slate50, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.slate200)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.slate500)),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -894,23 +1052,31 @@ class _YeniSiparisFormSheetState extends State<_YeniSiparisFormSheet> {
                 const SizedBox(height: 16),
                 _buildTedarikciSecici(),
                 const SizedBox(height: 10),
-                TextFormField(
-                  controller: _bolgeCtrl,
-                  decoration: const InputDecoration(labelText: 'Bölge'),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Zorunlu alan' : null,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => _pickDate(true),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Sipariş Tarihi: ${_dateFmt.format(_siparisTarihi)}', style: const TextStyle(fontSize: 11)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _bolgeCtrl,
+                        decoration: const InputDecoration(labelText: 'Bölge'),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Zorunlu alan' : null,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _miktarKgCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(labelText: 'Miktar (KG)'),
-                        validator: (v) => (v == null || double.tryParse(v.trim().replaceAll(',', '.')) == null) ? 'Geçersiz' : null,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
                     Expanded(
                       child: TextFormField(
                         controller: _alimFiyatiCtrl,
@@ -919,32 +1085,71 @@ class _YeniSiparisFormSheetState extends State<_YeniSiparisFormSheet> {
                         validator: (v) => (v == null || double.tryParse(v.trim().replaceAll(',', '.')) == null) ? 'Geçersiz' : null,
                       ),
                     ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _miktarKgCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(labelText: 'Miktar (KG)'),
+                        validator: (v) => (v == null || double.tryParse(v.trim().replaceAll(',', '.')) == null) ? 'Geçersiz' : null,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
-                TextFormField(
-                  controller: _toplamTutarCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Toplam Tutar (₺)', helperText: 'Miktar × Alım Fiyatı ile otomatik hesaplanır, gerekirse düzenleyin.'),
-                  validator: (v) => (v == null || double.tryParse(v.trim().replaceAll(',', '.')) == null) ? 'Geçersiz' : null,
-                ),
-                const SizedBox(height: 14),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => _pickDate(true),
-                        child: Text('Sipariş Tarihi: ${_dateFmt.format(_siparisTarihi)}', style: const TextStyle(fontSize: 11)),
+                      child: TextFormField(
+                        controller: _sayisiCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Sipariş Sayısı'),
+                        validator: (v) => (v == null || int.tryParse(v.trim()) == null || int.parse(v.trim()) < 1) ? 'En az 1 olmalı' : null,
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => _pickDate(false),
-                        child: Text('Ödeme Tarihi: ${_dateFmt.format(_odemeTarihi)}', style: const TextStyle(fontSize: 11)),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Ödeme Tarihi: ${_dateFmt.format(_odemeTarihi)}', style: const TextStyle(fontSize: 11)),
+                        ),
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(child: _buildOzetKart('Toplam Miktar', '${_kgFormat.format(_toplamKg)} Kg')),
+                    const SizedBox(width: 10),
+                    Expanded(child: _buildOzetKart('Toplam Tutar', _currency.format(_toplamTutarOnizleme))),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text.rich(
+                        TextSpan(
+                          style: const TextStyle(fontSize: 12, color: AppTheme.slate700),
+                          children: [
+                            const TextSpan(text: 'Nakliye '),
+                            TextSpan(text: _nakliyeDahil ? 'Dahil' : 'Hariç', style: const TextStyle(fontWeight: FontWeight.w900)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Switch(value: _nakliyeDahil, onChanged: (v) => setState(() => _nakliyeDahil = v)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _notCtrl,
+                  maxLines: 2,
+                  decoration: const InputDecoration(labelText: 'Not (isteğe bağlı)', hintText: 'Bu siparişle ilgili kısa bir not...'),
                 ),
                 const SizedBox(height: 20),
                 SizedBox(
