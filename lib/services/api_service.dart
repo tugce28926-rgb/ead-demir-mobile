@@ -8,6 +8,7 @@ import '../models/cari_model.dart';
 import '../models/baglanti_model.dart';
 import '../models/fatura_irsaliye_model.dart';
 import '../models/pending_email_model.dart';
+import '../models/siparis_model.dart';
 
 class ApiService {
   static String currentUser = '';
@@ -269,6 +270,84 @@ class ApiService {
       return kg is num ? kg.toDouble() : (double.tryParse(kg.toString()) ?? 0.0);
     }
     return 0.0;
+  }
+
+  // Demir Alışları (FerroxPro Atlas -> siparisler / depo_girisleri). Şirket
+  // bazlı bir Zirve kavramı değil, net-durum gibi tek ortak Mongo koleksiyonu.
+  Future<List<Siparis>> getDemirAlislari() async {
+    syncUserHeader();
+    final res = await _dio.get('demir-alislari');
+    final data = res.data;
+    if (data is Map && data['siparisler'] is List) {
+      return (data['siparisler'] as List).map((e) => Siparis.fromJson(Map<String, dynamic>.from(e))).toList();
+    }
+    return [];
+  }
+
+  Future<List<DepoGirisi>> getDepoGirisleri(String siparisId) async {
+    syncUserHeader();
+    final res = await _dio.get('demir-alislari/${Uri.encodeComponent(siparisId)}/depo-girisleri');
+    final data = res.data;
+    if (data is Map && data['depoGirisleri'] is List) {
+      return (data['depoGirisleri'] as List).map((e) => DepoGirisi.fromJson(Map<String, dynamic>.from(e))).toList();
+    }
+    return [];
+  }
+
+  // Yeni sipariş oluşturur; SADECE bu alanlar gönderilir (ödeme/fatura/nakliye/gizli
+  // gibi diğer tüm alanlar mobilden hiç yazılmaz).
+  Future<void> createSiparis({
+    required int tedarikciRef,
+    required String tedarikciAd,
+    required String siparisTarihi,
+    required String bolge,
+    required double alimFiyati,
+    required double miktarKg,
+    required double toplamTutar,
+    required String odemeTarihi,
+  }) async {
+    syncUserHeader();
+    final res = await _dio.post('demir-alislari', data: {
+      'tedarikciRef': tedarikciRef,
+      'tedarikciAd': tedarikciAd,
+      'siparisTarihi': siparisTarihi,
+      'bolge': bolge,
+      'alimFiyati': alimFiyati,
+      'miktarKg': miktarKg,
+      'toplamTutar': toplamTutar,
+      'odemeTarihi': odemeTarihi,
+    });
+    if (res.data == null || res.data['ok'] != true) {
+      throw Exception(res.data?['error'] ?? 'Sipariş oluşturulamadı.');
+    }
+  }
+
+  // Plaka atama; SADECE bu 4 alan güncellenir.
+  Future<void> assignPlaka({
+    required String siparisId,
+    required String plaka,
+    required String isimSoyisim,
+    required String tcNo,
+    required String cap,
+  }) async {
+    syncUserHeader();
+    final res = await _dio.post('demir-alislari/${Uri.encodeComponent(siparisId)}/plaka', data: {
+      'plaka': plaka,
+      'isimSoyisim': isimSoyisim,
+      'tcNo': tcNo,
+      'cap': cap,
+    });
+    if (res.data == null || res.data['ok'] != true) {
+      throw Exception(res.data?['error'] ?? 'Plaka ataması yapılamadı.');
+    }
+  }
+
+  // WhatsApp paylaşım penceresi açıldıktan sonra tek bir alanı ($set) işaretler.
+  // Masaüstü uygulamayla aynı sözleşme: bu alana gönderilen PLAKANIN KENDİSİ
+  // yazılır (zaman damgası değil) — "aynı plaka tekrar gönderilmesin" kontrolü buna göre yapılıyor.
+  Future<void> markPlakaWhatsappGonderildi(String siparisId, String plaka) async {
+    syncUserHeader();
+    await _dio.post('demir-alislari/${Uri.encodeComponent(siparisId)}/whatsapp-gonderildi', data: {'plaka': plaka});
   }
 
   Future<bool> hideBank(String bankName) async {
