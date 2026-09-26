@@ -677,28 +677,61 @@ class _YeniSiparisFormSheet extends StatefulWidget {
 
 class _YeniSiparisFormSheetState extends State<_YeniSiparisFormSheet> {
   final _formKey = GlobalKey<FormState>();
-  final _tedarikciRefCtrl = TextEditingController();
-  final _tedarikciAdCtrl = TextEditingController();
   final _bolgeCtrl = TextEditingController(text: 'İzmir');
   final _alimFiyatiCtrl = TextEditingController();
-  final _miktarKgCtrl = TextEditingController();
+  // Masaüstündeki gibi (main.js: formatTRNumber(27400)) miktar hep bu değerle geliyor.
+  final _miktarKgCtrl = TextEditingController(text: '27400');
   final _toplamTutarCtrl = TextEditingController();
   DateTime _siparisTarihi = DateTime.now();
-  DateTime _odemeTarihi = DateTime.now();
+  late DateTime _odemeTarihi;
   bool _saving = false;
   bool _toplamManuelDegistirildi = false;
   bool _isAutoUpdatingToplam = false;
+  // Kullanıcı ödeme tarihini elle değiştirmediği sürece, sipariş tarihi
+  // değiştikçe masaüstündeki gibi (haftaninCumaGunu) otomatik yeniden hesaplanır.
+  bool _odemeElleDegisti = false;
+
+  // Masaüstündeki main.js:haftaninCumaGunu ile birebir aynı: verilen tarihin
+  // içinde bulunduğu haftanın Cuma günü; tarih zaten Cuma'yı geçtiyse
+  // (Cumartesi/Pazar) bir sonraki haftanın Cuma'sına sarar.
+  static DateTime _haftaninCumaGunu(DateTime d) {
+    final gunIndex = d.weekday; // Dart: Pazartesi=1 ... Pazar=7 (JS'teki gunIndex ile birebir aynı)
+    var fark = 5 - gunIndex;
+    if (fark < 0) fark += 7;
+    return DateTime(d.year, d.month, d.day).add(Duration(days: fark));
+  }
+
+  // Tedarikçi seçimi Zirve'den (CARIGEN, ALICIORSATICI=2) geliyor — masaüstündeki
+  // gibi serbest metin değil, listeden seçilmiş gerçek bir REF olması gerekiyor.
+  List<Tedarikci> _tedarikciler = [];
+  bool _tedarikcilerLoading = true;
+  String? _tedarikciYukleHata;
+  Tedarikci? _secilenTedarikci;
 
   final DateFormat _dateFmt = DateFormat('dd.MM.yyyy');
 
   @override
   void initState() {
     super.initState();
+    _odemeTarihi = _haftaninCumaGunu(_siparisTarihi);
     _alimFiyatiCtrl.addListener(_recalculateToplam);
     _miktarKgCtrl.addListener(_recalculateToplam);
     _toplamTutarCtrl.addListener(() {
       if (!_isAutoUpdatingToplam) _toplamManuelDegistirildi = true;
     });
+    _loadTedarikciler();
+    // İlk hesaplama: yukarıdaki 27400 varsayılan miktarı ve toplam tutarı otomatik doldursun.
+    _recalculateToplam();
+  }
+
+  Future<void> _loadTedarikciler() async {
+    setState(() { _tedarikcilerLoading = true; _tedarikciYukleHata = null; });
+    try {
+      final list = await widget.apiService.getTedarikciler();
+      if (mounted) setState(() { _tedarikciler = list; _tedarikcilerLoading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _tedarikciYukleHata = 'Tedarikçiler yüklenemedi: $e'; _tedarikcilerLoading = false; });
+    }
   }
 
   // alim_fiyati TON başınadır (masaüstündeki main.js ile aynı: toplam =
@@ -727,8 +760,10 @@ class _YeniSiparisFormSheetState extends State<_YeniSiparisFormSheet> {
       setState(() {
         if (isSiparisTarihi) {
           _siparisTarihi = picked;
+          if (!_odemeElleDegisti) _odemeTarihi = _haftaninCumaGunu(picked);
         } else {
           _odemeTarihi = picked;
+          _odemeElleDegisti = true;
         }
       });
     }
@@ -736,11 +771,13 @@ class _YeniSiparisFormSheetState extends State<_YeniSiparisFormSheet> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final tedarikci = _secilenTedarikci;
+    if (tedarikci == null) return;
     setState(() => _saving = true);
     try {
       await widget.apiService.createSiparis(
-        tedarikciRef: int.parse(_tedarikciRefCtrl.text.trim()),
-        tedarikciAd: _tedarikciAdCtrl.text.trim(),
+        tedarikciRef: tedarikci.ref,
+        tedarikciAd: tedarikci.ad,
         siparisTarihi: DateFormat('yyyy-MM-dd').format(_siparisTarihi),
         bolge: _bolgeCtrl.text.trim(),
         alimFiyati: double.parse(_alimFiyatiCtrl.text.trim().replaceAll(',', '.')),
@@ -758,6 +795,80 @@ class _YeniSiparisFormSheetState extends State<_YeniSiparisFormSheet> {
         );
       }
     }
+  }
+
+  Widget _buildTedarikciSecici() {
+    if (_tedarikcilerLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryBlue)),
+            SizedBox(width: 10),
+            Text('Tedarikçiler yükleniyor...', style: TextStyle(fontSize: 11, color: AppTheme.slate500)),
+          ],
+        ),
+      );
+    }
+    if (_tedarikciYukleHata != null) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: const Color(0xFFFFF1F2), borderRadius: BorderRadius.circular(10)),
+        child: Row(
+          children: [
+            Expanded(child: Text(_tedarikciYukleHata!, style: const TextStyle(fontSize: 11, color: AppTheme.primaryRose))),
+            TextButton(onPressed: _loadTedarikciler, child: const Text('Tekrar Dene', style: TextStyle(fontSize: 11))),
+          ],
+        ),
+      );
+    }
+    return Autocomplete<Tedarikci>(
+      displayStringForOption: (t) => t.ad,
+      optionsBuilder: (textEditingValue) {
+        final q = textEditingValue.text.trim().toLowerCase();
+        if (q.isEmpty) return const Iterable<Tedarikci>.empty();
+        return _tedarikciler.where((t) => t.ad.toLowerCase().contains(q));
+      },
+      onSelected: (t) => setState(() => _secilenTedarikci = t),
+      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+        return TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          decoration: const InputDecoration(labelText: 'Tedarikçi Adı', helperText: 'Zirve\'den listeden seçin'),
+          onChanged: (v) {
+            if (_secilenTedarikci != null && v != _secilenTedarikci!.ad) {
+              setState(() => _secilenTedarikci = null);
+            }
+          },
+          validator: (v) => _secilenTedarikci == null ? 'Listeden geçerli bir tedarikçi seçin' : null,
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(10),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 220, minWidth: 280),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final opt = options.elementAt(index);
+                  return ListTile(
+                    dense: true,
+                    title: Text(opt.ad, style: const TextStyle(fontSize: 12)),
+                    onTap: () => onSelected(opt),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -781,18 +892,7 @@ class _YeniSiparisFormSheetState extends State<_YeniSiparisFormSheet> {
                 const SizedBox(height: 14),
                 const Text('Yeni Sipariş', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
                 const SizedBox(height: 16),
-                TextFormField(
-                  controller: _tedarikciRefCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Tedarikçi Ref (Zirve Cari Kodu)'),
-                  validator: (v) => (v == null || int.tryParse(v.trim()) == null) ? 'Geçerli bir sayı girin' : null,
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _tedarikciAdCtrl,
-                  decoration: const InputDecoration(labelText: 'Tedarikçi Adı'),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Zorunlu alan' : null,
-                ),
+                _buildTedarikciSecici(),
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: _bolgeCtrl,
