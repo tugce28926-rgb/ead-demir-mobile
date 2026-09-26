@@ -17,6 +17,7 @@ dependencies:
   printing: ^5.13.1
   shared_preferences: ^2.2.3
   onesignal_flutter: ^5.2.7
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
