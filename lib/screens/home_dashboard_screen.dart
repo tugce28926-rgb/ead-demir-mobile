@@ -12,6 +12,7 @@ import 'musteriler_screen.dart';
 import 'irsaliye_screen.dart';
 import 'fatura_screen.dart';
 import 'pdf_viewer_screen.dart';
+import 'demir_alislari_screen.dart';
 
 class HomeDashboardScreen extends StatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -421,6 +422,43 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Demir Alışları (FerroxPro Atlas -> siparisler / depo_girisleri)
+          InkWell(
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DemirAlislariScreen())),
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.slate200),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(color: const Color(0xFFFFF7ED), borderRadius: BorderRadius.circular(12)),
+                    child: const Center(child: Text('🏗️', style: TextStyle(fontSize: 18))),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Demir Alışları', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
+                        SizedBox(height: 2),
+                        Text('Sipariş ve depo girişlerini görüntüle', style: TextStyle(fontSize: 10, color: AppTheme.slate400)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: AppTheme.slate400),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 16),
