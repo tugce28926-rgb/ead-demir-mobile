@@ -5,6 +5,27 @@ import '../core/theme.dart';
 import '../models/siparis_model.dart';
 import '../services/api_service.dart';
 
+// Masaüstündeki main.js:siparisGruplariniOlustur ile birebir aynı gruplama —
+// aynı (sipariş tarihi, tedarikçi, bölge, alım fiyatı) kombinasyonundaki
+// siparişler "Günlük Ödemeler" ekranında tek satırda toplanır.
+class _OdemeGrubu {
+  final List<Siparis> siparisler;
+  _OdemeGrubu(this.siparisler);
+
+  Siparis get _ilk => siparisler.first;
+  String get tedarikciAd => _ilk.tedarikciAd;
+  String get bolge => _ilk.bolge;
+  double get alimFiyati => _ilk.alimFiyati;
+  String get siparisTarihi => _ilk.siparisTarihi;
+  String get odemeTarihi => _ilk.odemeTarihi;
+  int get siparisSayisi => siparisler.length;
+  double get toplamKg => siparisler.fold(0.0, (t, s) => t + s.miktarKg);
+  double get toplamTutarHam => siparisler.fold(0.0, (t, s) => t + s.toplamTutar);
+  // Masaüstündeki main.js:siparisGruplariniOlustur ile birebir aynı tevkifat
+  // hesabı — Günlük Ödemeler ekranında gösterilen ve ödenirken kullanılan tutar budur.
+  double get toplamTutar => (toplamTutarHam / 1.2) * 1.1;
+}
+
 class DemirAlislariScreen extends StatefulWidget {
   const DemirAlislariScreen({super.key});
 
@@ -35,15 +56,24 @@ class _DemirAlislariScreenState extends State<DemirAlislariScreen> {
     return temel.where((s) => _faturaGoster ? s.faturaGeldi : !s.faturaGeldi).toList();
   }
 
-  // "Ödemesi Gelenler": ödeme tarihi bugüne kadar (bugün dahil) gelmiş ama hâlâ
-  // ödenmemiş siparişler — masaüstündeki "Günlük Ödemeler" ekranının salt
-  // okunur, tarihe bağlı görünümüyle aynı mantık. En yakın/geciken en üstte.
-  List<Siparis> get _odemesiGelenSiparisler {
-    final bugun = DateTime.now();
-    final bugunStr = '${bugun.year.toString().padLeft(4, '0')}-${bugun.month.toString().padLeft(2, '0')}-${bugun.day.toString().padLeft(2, '0')}';
-    final liste = _siparisler.where((s) => !s.odendi && s.odemeTarihi.isNotEmpty && s.odemeTarihi.compareTo(bugunStr) <= 0).toList();
-    liste.sort((a, b) => a.odemeTarihi.compareTo(b.odemeTarihi));
-    return liste;
+  // "Ödemesi Yapılmayan Siparişler": masaüstündeki Günlük Ödemeler ekranının bu
+  // sekmesiyle birebir aynı — ödeme tarihine bakılmaksızın henüz ödenmemiş TÜM
+  // siparişler, aynı (sipariş tarihi, tedarikçi, bölge, alım fiyatı) grubundakiler
+  // tek satırda birleştirilir (main.js:siparisGruplariniOlustur).
+  List<_OdemeGrubu> get _odemesiGelenGruplari {
+    final odenmemis = _siparisler.where((s) => !s.odendi).toList();
+    final gruplar = _grupla(odenmemis);
+    gruplar.sort((a, b) => a.odemeTarihi.compareTo(b.odemeTarihi));
+    return gruplar;
+  }
+
+  static List<_OdemeGrubu> _grupla(List<Siparis> siparisler) {
+    final harita = <String, List<Siparis>>{};
+    for (final s in siparisler) {
+      final key = '${s.siparisTarihi}|${s.tedarikciRef}|${s.bolge}|${s.alimFiyati}';
+      harita.putIfAbsent(key, () => []).add(s);
+    }
+    return harita.values.map((liste) => _OdemeGrubu(liste)).toList();
   }
 
   // "Nakliye Ödemeleri": depoya gelmiş ama nakliyesi ne fiyata dahil edilmiş
@@ -315,25 +345,25 @@ class _DemirAlislariScreenState extends State<DemirAlislariScreen> {
   // görünümü — iki ayrı liste: vadesi gelmiş sipariş ödemeleri ve depoya gelmiş
   // ama nakliyesi hâlâ ödenmemiş siparişler. Ödeme yapma/işaretleme YOK, sadece görüntüleme.
   Widget _buildOdemeGelenlerListesi() {
-    final siparisOdemeleri = _odemesiGelenSiparisler;
+    final siparisOdemeleri = _odemesiGelenGruplari;
     final nakliyeOdemeleri = _nakliyeOdemesiGelenSiparisler;
     if (siparisOdemeleri.isEmpty && nakliyeOdemeleri.isEmpty) {
       return ListView(
         padding: const EdgeInsets.all(14),
-        children: [_buildEmptyState('Ödemesi gelen sipariş veya nakliye yok.')],
+        children: [_buildEmptyState('Ödemesi yapılmayan sipariş veya nakliye yok.')],
       );
     }
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 90),
       children: [
         if (siparisOdemeleri.isNotEmpty) ...[
-          const Text('SİPARİŞ ÖDEMELERİ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
+          const Text('ÖDEMESİ YAPILMAYAN SİPARİŞLER', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
           const SizedBox(height: 8),
-          ...siparisOdemeleri.map(_buildSiparisOdemesiCard),
+          ...siparisOdemeleri.map(_buildOdemeGrubuCard),
           const SizedBox(height: 10),
         ],
         if (nakliyeOdemeleri.isNotEmpty) ...[
-          const Text('NAKLİYE ÖDEMELERİ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
+          const Text('ÖDEMESİ YAPILMAYAN NAKLİYELER', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.slate500)),
           const SizedBox(height: 8),
           ...nakliyeOdemeleri.map(_buildNakliyeOdemesiCard),
         ],
@@ -341,42 +371,46 @@ class _DemirAlislariScreenState extends State<DemirAlislariScreen> {
     );
   }
 
-  Widget _buildSiparisOdemesiCard(Siparis s) {
+  // Masaüstündeki Günlük Ödemeler > "Ödemesi Yapılmayan Siparişler" satırının
+  // (Sipariş Tarihi, Ödeme Tarihi, Tedarikçi, Bölge, Alım Fiyatı, Sipariş (Kg), Tutar)
+  // salt okunur mobil karşılığı — gruplanmış ve tevkifatlı tutarla.
+  Widget _buildOdemeGrubuCard(_OdemeGrubu g) {
     final bugun = DateTime.now();
-    final odemeTarihi = _parseTarih(s.odemeTarihi);
+    final odemeTarihi = _parseTarih(g.odemeTarihi);
     final gecikmeGunu = odemeTarihi == null ? 0 : DateTime(bugun.year, bugun.month, bugun.day).difference(DateTime(odemeTarihi.year, odemeTarihi.month, odemeTarihi.day)).inDays;
-    return InkWell(
-      onTap: () => _showSiparisDetail(s),
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.slate200)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(s.tedarikciAd, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.slate900), maxLines: 1, overflow: TextOverflow.ellipsis),
-                ),
-                Text(_currency.format(s.toplamTutar), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Text('Ödeme Tarihi: ${_fmtTarih(s.odemeTarihi)}', style: const TextStyle(fontSize: 10, color: AppTheme.slate400)),
-                const SizedBox(width: 8),
-                if (gecikmeGunu > 0)
-                  _buildBadge('$gecikmeGunu GÜN GECİKTİ', const Color(0xFFFFF1F2), AppTheme.primaryRose)
-                else
-                  _buildBadge('BUGÜN', const Color(0xFFFFFBEB), AppTheme.primaryAmber),
-              ],
-            ),
-          ],
-        ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.slate200)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(g.tedarikciAd, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.slate900), maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+              Text(_currency.format(g.toplamTutar), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${_kgFormat.format(g.toplamKg)} Kg${g.siparisSayisi > 1 ? ' (${g.siparisSayisi})' : ''} • ${_currency.format(g.alimFiyati)}/Ton • ${g.bolge}',
+            style: const TextStyle(fontSize: 10, color: AppTheme.slate400),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Text('Sipariş: ${_fmtTarih(g.siparisTarihi)} • Ödeme: ${_fmtTarih(g.odemeTarihi)}', style: const TextStyle(fontSize: 10, color: AppTheme.slate400)),
+              const Spacer(),
+              if (gecikmeGunu > 0)
+                _buildBadge('$gecikmeGunu GÜN GECİKTİ', const Color(0xFFFFF1F2), AppTheme.primaryRose)
+              else if (gecikmeGunu == 0)
+                _buildBadge('BUGÜN', const Color(0xFFFFFBEB), AppTheme.primaryAmber),
+            ],
+          ),
+        ],
       ),
     );
   }
