@@ -43,6 +43,7 @@ class Siparis {
   final String? isimSoyisim;
   final String? tcNo;
   final String? cap;
+  final String? yuklemeYeri;
   final String? plakaWhatsappGonderildi;
   // Bu siparişe bağlı depo_girisleri toplamları (backend'de hesaplanıp eklenir).
   // Masaüstündeki "Bekleyen Siparişler / Depoya Gelenler" sekme ayrımı da
@@ -75,6 +76,7 @@ class Siparis {
     this.isimSoyisim,
     this.tcNo,
     this.cap,
+    this.yuklemeYeri,
     this.plakaWhatsappGonderildi,
     this.gelenKg = 0,
     this.odenecekTutar = 0,
@@ -109,6 +111,7 @@ class Siparis {
       isimSoyisim: json['isim_soyisim']?.toString(),
       tcNo: json['tc_no']?.toString(),
       cap: json['cap']?.toString(),
+      yuklemeYeri: json['yukleme_yeri']?.toString(),
       plakaWhatsappGonderildi: json['plaka_whatsapp_gonderildi']?.toString(),
       gelenKg: _toDouble(json['gelenKg']),
       odenecekTutar: _toDouble(json['odenecekTutar']),
