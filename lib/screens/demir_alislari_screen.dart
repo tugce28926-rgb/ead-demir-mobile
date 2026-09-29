@@ -26,6 +26,14 @@ class _OdemeGrubu {
   double get toplamTutar => (toplamTutarHam / 1.2) * 1.1;
 }
 
+// Masaüstündeki bilinenSuruculer() kaydı — bir plakaya daha önce girilmiş isim/TC.
+class _BilinenSurucu {
+  final String plaka;
+  final String isimSoyisim;
+  final String tcNo;
+  _BilinenSurucu(this.plaka, this.isimSoyisim, this.tcNo);
+}
+
 class DemirAlislariScreen extends StatefulWidget {
   const DemirAlislariScreen({super.key});
 
@@ -637,6 +645,7 @@ class _DemirAlislariScreenState extends State<DemirAlislariScreen> {
         kgFormat: _kgFormat,
         fmtTarih: _fmtTarih,
         onPlakaAtandi: _loadData,
+        tumSiparisler: _siparisler,
       ),
     );
   }
@@ -663,6 +672,10 @@ class _SiparisDetailSheet extends StatefulWidget {
   final NumberFormat kgFormat;
   final String Function(String) fmtTarih;
   final VoidCallback onPlakaAtandi;
+  // "Bilinen sürücüler" otomatik tamamlaması için — masaüstündeki
+  // bilinenSuruculer()/plakaInput input dinleyicisiyle aynı mantık: aynı
+  // plaka daha önce başka bir siparişe de girilmişse isim/TC'yi hatırlar.
+  final List<Siparis> tumSiparisler;
 
   const _SiparisDetailSheet({
     required this.siparis,
@@ -671,6 +684,7 @@ class _SiparisDetailSheet extends StatefulWidget {
     required this.kgFormat,
     required this.fmtTarih,
     required this.onPlakaAtandi,
+    required this.tumSiparisler,
   });
 
   @override
@@ -681,6 +695,23 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
   List<DepoGirisi> _girisler = [];
   bool _isLoading = true;
   String? _error;
+
+  // Masaüstündeki bilinenSuruculer() ile aynı: tüm siparişler içinde aynı
+  // plakanın EN SON (liste zaten sipariş tarihine göre azalan sıralı) girilen
+  // isim/TC bilgisini hatırlar — plaka daha önce hiç görülmediyse listede yok.
+  List<_BilinenSurucu> get _bilinenSuruculer {
+    final gorulen = <String>{};
+    final liste = <_BilinenSurucu>[];
+    for (final s in widget.tumSiparisler) {
+      final plaka = (s.plaka ?? '').trim();
+      if (plaka.isEmpty) continue;
+      final anahtar = plaka.toUpperCase();
+      if (gorulen.contains(anahtar)) continue;
+      gorulen.add(anahtar);
+      liste.add(_BilinenSurucu(plaka, s.isimSoyisim ?? '', s.tcNo ?? ''));
+    }
+    return liste;
+  }
 
   @override
   void initState() {
@@ -743,6 +774,22 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
     final capCtrl = TextEditingController(text: s.cap ?? '');
     final yuklemeYeriCtrl = TextEditingController(text: s.yuklemeYeri ?? '');
     bool saving = false;
+
+    // Masaüstündeki plakaInput dinleyicisiyle aynı: yazılan plaka bilinen bir
+    // siparişteki plakayla TAM eşleşirse isim/TC otomatik dolduruluyor —
+    // aynı araç/sürücü birden fazla siparişte tekrar girilmesin diye.
+    final suruculer = _bilinenSuruculer;
+    plakaCtrl.addListener(() {
+      final deger = plakaCtrl.text.trim().toUpperCase();
+      if (deger.isEmpty) return;
+      for (final k in suruculer) {
+        if (k.plaka.toUpperCase() == deger) {
+          if (isimCtrl.text != k.isimSoyisim) isimCtrl.text = k.isimSoyisim;
+          if (tcCtrl.text != k.tcNo) tcCtrl.text = k.tcNo;
+          break;
+        }
+      }
+    });
 
     showDialog(
       context: context,
