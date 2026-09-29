@@ -213,6 +213,44 @@ class ApiService {
     }
   }
 
+  // Fon Alış/Satış — sadece KUVEYT/VAKIF banka çiftlerinde destekleniyor
+  // (bkz. bankSupportsFonAlSat). Dönüş: null = temiz başarı, aksi halde uyarı metni.
+  Future<String?> createFonAlSat({
+    required String bankName,
+    required String direction, // 'alis' | 'satis'
+    required double amount,
+    double feeAmount = 0,
+    String? description,
+    DateTime? date,
+  }) async {
+    syncUserHeader();
+    try {
+      final res = await _dio.post('banks/fon-al-sat', data: {
+        'company': activeCompany,
+        'bankName': bankName,
+        'direction': direction,
+        'amount': amount,
+        'feeAmount': feeAmount,
+        'description': description,
+        'date': (date ?? DateTime.now()).toIso8601String(),
+        'username': currentUser,
+      });
+      if (res.data != null && res.data['ok'] == true) {
+        final warnings = res.data['warnings'];
+        if (warnings is List && warnings.isNotEmpty) {
+          return warnings.join(' | ');
+        }
+        return null;
+      }
+      final err = (res.data is Map) ? res.data['error'] : null;
+      throw Exception(err ?? 'Kayıt başarısız oldu.');
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final err = (data is Map) ? (data['error'] ?? e.message) : e.message;
+      throw Exception(err ?? 'Bağlantı hatası');
+    }
+  }
+
   Future<List<CariSummary>> getDebtors() async {
     syncUserHeader();
     final res = await _dio.get('cariler/borclular', queryParameters: {'company': activeCompany});
