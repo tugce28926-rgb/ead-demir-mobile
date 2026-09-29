@@ -41,6 +41,8 @@ class _DemirAlislariScreenState extends State<DemirAlislariScreen> {
   List<Siparis> _siparisler = [];
   bool _isLoading = true;
   String? _error;
+  // Ödeme işlemi sırasında butonların tekrar tıklanmasını engellemek için.
+  bool _odemeIslemDevamEdiyor = false;
 
   // Masaüstündeki "Bekleyen Siparişler / Depoya Gelenler" sekme ayrımı: sabit
   // bir alan değil, siparişe bağlı depo girişi toplamına göre hesaplanıyor
@@ -219,6 +221,20 @@ class _DemirAlislariScreenState extends State<DemirAlislariScreen> {
     );
   }
 
+  // Kart listelerindeki KG/fiyat/tarih gibi değerlerin silik değil belirgin
+  // görünmesi için ortak "etiket + kalın değer" bloğu.
+  Widget _buildInlineStat(String label, String value, {Color? color}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: AppTheme.slate400, letterSpacing: 0.2)),
+        const SizedBox(height: 1),
+        Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color ?? AppTheme.slate800)),
+      ],
+    );
+  }
+
   Widget _buildBekleyenCard(Siparis s) {
     return InkWell(
       onTap: () => _showSiparisDetail(s),
@@ -254,12 +270,17 @@ class _DemirAlislariScreenState extends State<DemirAlislariScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              '${_kgFormat.format(s.miktarKg)} KG • ${_currency.format(s.alimFiyati)}/Ton • ${_fmtTarih(s.siparisTarihi)}',
-              style: const TextStyle(fontSize: 10, color: AppTheme.slate400),
-            ),
             const SizedBox(height: 8),
+            Row(
+              children: [
+                _buildInlineStat('MİKTAR', '${_kgFormat.format(s.miktarKg)} KG'),
+                const SizedBox(width: 18),
+                _buildInlineStat('TON FİYATI', _currency.format(s.alimFiyati), color: AppTheme.primaryBlue),
+                const SizedBox(width: 18),
+                _buildInlineStat('SİPARİŞ TARİHİ', _fmtTarih(s.siparisTarihi)),
+              ],
+            ),
+            const SizedBox(height: 10),
             Row(
               children: [
                 if (s.plakaAtanmis)
@@ -317,13 +338,20 @@ class _DemirAlislariScreenState extends State<DemirAlislariScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              '${_kgFormat.format(s.gelenKg)} KG geldi'
-              '${s.gelisTarihleri.isNotEmpty ? ' • Geliş: ${s.gelisTarihleri.map(_fmtTarih).join(', ')}' : ''}',
-              style: const TextStyle(fontSize: 10, color: AppTheme.slate400),
-            ),
             const SizedBox(height: 8),
+            Row(
+              children: [
+                _buildInlineStat('GELEN', '${_kgFormat.format(s.gelenKg)} KG', color: AppTheme.primaryPurple),
+                if (s.gelisTarihleri.isNotEmpty) ...[
+                  const SizedBox(width: 18),
+                  _buildInlineStat(
+                    s.gelisTarihleri.length > 1 ? 'GELİŞ TARİHLERİ' : 'GELİŞ TARİHİ',
+                    s.gelisTarihleri.map(_fmtTarih).join(', '),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 10),
             Row(
               children: [
                 if (s.faturaGeldi)
@@ -374,6 +402,83 @@ class _DemirAlislariScreenState extends State<DemirAlislariScreen> {
   // Masaüstündeki Günlük Ödemeler > "Ödemesi Yapılmayan Siparişler" satırının
   // (Sipariş Tarihi, Ödeme Tarihi, Tedarikçi, Bölge, Alım Fiyatı, Sipariş (Kg), Tutar)
   // salt okunur mobil karşılığı — gruplanmış ve tevkifatlı tutarla.
+  // Masaüstünden farklı olarak tutar SORULMAZ — sunucu kendisi hesaplayıp
+  // yazıyor, mobil tarafta sadece onay alınıp "Öde" tetikleniyor.
+  Future<void> _odeSiparisGrubuOnayla(_OdemeGrubu g) async {
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Ödeme Onayı', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
+        content: Text(
+          '${g.tedarikciAd} — ${_currency.format(g.toplamTutar)} tutarındaki '
+          '${g.siparisSayisi > 1 ? '${g.siparisSayisi} sipariş' : 'sipariş'} '
+          'ödendi olarak işaretlenecek. Bu işlem masaüstünde de görünür.',
+          style: const TextStyle(fontSize: 12),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Evet, Öde')),
+        ],
+      ),
+    );
+    if (onay != true) return;
+    setState(() => _odemeIslemDevamEdiyor = true);
+    try {
+      await _apiService.odeSiparisGrubu(g.siparisler.map((s) => s.id).toList());
+      await _loadData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(backgroundColor: AppTheme.primaryEmerald, content: Text('Ödeme kaydedildi.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(backgroundColor: AppTheme.primaryRose, content: Text('Ödeme kaydedilemedi: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _odemeIslemDevamEdiyor = false);
+    }
+  }
+
+  Future<void> _odeNakliyeOnayla(Siparis s) async {
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Nakliye Ödemesi Onayı', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
+        content: Text(
+          '${s.tedarikciAd} (${s.plakalar.isNotEmpty ? s.plakalar.join(', ') : 'plaka yok'}) siparişinin nakliyesi '
+          'ödendi olarak işaretlenecek. Bu işlem masaüstünde de görünür.',
+          style: const TextStyle(fontSize: 12),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Evet, Öde')),
+        ],
+      ),
+    );
+    if (onay != true) return;
+    setState(() => _odemeIslemDevamEdiyor = true);
+    try {
+      await _apiService.odeNakliye(s.id);
+      await _loadData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(backgroundColor: AppTheme.primaryEmerald, content: Text('Nakliye ödemesi kaydedildi.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(backgroundColor: AppTheme.primaryRose, content: Text('Nakliye ödemesi kaydedilemedi: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _odemeIslemDevamEdiyor = false);
+    }
+  }
+
   Widget _buildOdemeGrubuCard(_OdemeGrubu g) {
     final bugun = DateTime.now();
     final odemeTarihi = _parseTarih(g.odemeTarihi);
@@ -394,21 +499,37 @@ class _DemirAlislariScreenState extends State<DemirAlislariScreen> {
               Text(_currency.format(g.toplamTutar), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.slate900)),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            '${_kgFormat.format(g.toplamKg)} Kg${g.siparisSayisi > 1 ? ' (${g.siparisSayisi})' : ''} • ${_currency.format(g.alimFiyati)}/Ton • ${g.bolge}',
-            style: const TextStyle(fontSize: 10, color: AppTheme.slate400),
+          const SizedBox(height: 2),
+          Text(g.bolge, style: const TextStyle(fontSize: 10, color: AppTheme.slate400)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _buildInlineStat('KG', '${_kgFormat.format(g.toplamKg)}${g.siparisSayisi > 1 ? ' (${g.siparisSayisi})' : ''}'),
+              const SizedBox(width: 16),
+              _buildInlineStat('TON FİYATI', _currency.format(g.alimFiyati), color: AppTheme.primaryBlue),
+            ],
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-              Text('Sipariş: ${_fmtTarih(g.siparisTarihi)} • Ödeme: ${_fmtTarih(g.odemeTarihi)}', style: const TextStyle(fontSize: 10, color: AppTheme.slate400)),
+              _buildInlineStat('SİPARİŞ', _fmtTarih(g.siparisTarihi)),
+              const SizedBox(width: 16),
+              _buildInlineStat('ÖDEME', _fmtTarih(g.odemeTarihi), color: gecikmeGunu >= 0 ? AppTheme.primaryRose : null),
               const Spacer(),
               if (gecikmeGunu > 0)
                 _buildBadge('$gecikmeGunu GÜN GECİKTİ', const Color(0xFFFFF1F2), AppTheme.primaryRose)
               else if (gecikmeGunu == 0)
                 _buildBadge('BUGÜN', const Color(0xFFFFFBEB), AppTheme.primaryAmber),
             ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _odemeIslemDevamEdiyor ? null : () => _odeSiparisGrubuOnayla(g),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryBlue, padding: const EdgeInsets.symmetric(vertical: 10)),
+              child: const Text('Öde', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12)),
+            ),
           ),
         ],
       ),
@@ -439,6 +560,15 @@ class _DemirAlislariScreenState extends State<DemirAlislariScreen> {
             Text(
               '${_kgFormat.format(s.gelenKg)} KG geldi${s.plakalar.isNotEmpty ? ' • ${s.plakalar.join(', ')}' : ''}',
               style: const TextStyle(fontSize: 10, color: AppTheme.slate400),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _odemeIslemDevamEdiyor ? null : () => _odeNakliyeOnayla(s),
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryPurple, padding: const EdgeInsets.symmetric(vertical: 10)),
+                child: const Text('Öde', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12)),
+              ),
             ),
           ],
         ),
@@ -560,8 +690,9 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
   // WhatsApp'ı, kişi seçimi kullanıcıda kalacak şekilde (numara sabitlenmeden)
   // hazır mesajla açar. Gönderilip gönderilmediğini kesin bilemeyiz; uygulama
   // WhatsApp'a geçmeyi başardığı an "gönderildi" kabul edip masaüstündeki
-  // aynı alanı (plaka_whatsapp_gonderildi) işaretleriz. Masaüstü uygulamayla
-  // aynı kural: aynı plaka için daha önce gönderildiyse tekrar sorulmaz.
+  // aynı alanı (plaka_whatsapp_gonderildi) işaretleriz. Masaüstünden farklı
+  // olarak aynı plaka için tekrar gönderim ENGELLENMEZ — kullanıcı istediği
+  // zaman aynı bilgiyi tekrar gönderebilsin diye.
   Future<void> _sendPlakaWhatsapp({
     required String plaka,
     required String isimSoyisim,
@@ -570,14 +701,6 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
   }) async {
     final s = widget.siparis;
     if (plaka.isEmpty) return;
-    if (s.plakaWhatsappGonderildi == plaka) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Bu sipariş için "$plaka" plaka bilgisi zaten WhatsApp\'tan gönderildi.')),
-        );
-      }
-      return;
-    }
     final mesaj = 'Plaka Bilgisi Bildirimi\n\n'
         'Tedarikçi: ${s.tedarikciAd}\n'
         'Sipariş Tarihi: ${widget.fmtTarih(s.siparisTarihi)}\n\n'
@@ -872,6 +995,15 @@ class _YeniSiparisFormSheetState extends State<_YeniSiparisFormSheet> {
   final DateFormat _dateFmt = DateFormat('dd.MM.yyyy');
   final NumberFormat _currency = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 2);
   final NumberFormat _kgFormat = NumberFormat('#,##0', 'tr_TR');
+  // Tarih butonları varsayılan oval (stadium) görünüm yerine diğer form
+  // alanlarıyla aynı düz köşeli görünümde olsun diye.
+  final ButtonStyle _duzButonStil = OutlinedButton.styleFrom(
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    side: const BorderSide(color: AppTheme.slate300),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+    foregroundColor: AppTheme.slate700,
+    alignment: Alignment.centerLeft,
+  );
 
   @override
   void initState() {
@@ -1092,6 +1224,7 @@ class _YeniSiparisFormSheetState extends State<_YeniSiparisFormSheet> {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => _pickDate(true),
+                        style: _duzButonStil,
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: Text('Sipariş Tarihi: ${_dateFmt.format(_siparisTarihi)}', style: const TextStyle(fontSize: 11)),
@@ -1146,6 +1279,7 @@ class _YeniSiparisFormSheetState extends State<_YeniSiparisFormSheet> {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => _pickDate(false),
+                        style: _duzButonStil,
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: Text('Ödeme Tarihi: ${_dateFmt.format(_odemeTarihi)}', style: const TextStyle(fontSize: 11)),
