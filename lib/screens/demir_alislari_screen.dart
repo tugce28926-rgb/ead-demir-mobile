@@ -713,6 +713,20 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
     return liste;
   }
 
+  // Boşluk ve büyük/küçük harf farkını yok sayarak karşılaştırma yapabilmek
+  // için: "26 BC 154", "26bc154", "26 bc 154" hepsi aynı anahtara indirgenir.
+  static String _plakaNormalize(String plaka) => plaka.toUpperCase().replaceAll(RegExp(r'\s+'), '');
+
+  // Masaüstündeki main.js:plakaFormatla ile birebir aynı — "26bc154" gibi
+  // boşluksuz/küçük harf girilse de kaydedilirken "26 BC 154" şeklinde düzgün
+  // aralıklı hale getirilir. Tanınmayan bir kalıpsa dokunmadan bırakılır.
+  static String _plakaFormatla(String plaka) {
+    final temiz = _plakaNormalize(plaka);
+    final eslesme = RegExp(r'^(\d{2})([A-ZÇĞİÖŞÜ]{1,3})(\d{2,4})$').firstMatch(temiz);
+    if (eslesme == null) return plaka;
+    return '${eslesme.group(1)} ${eslesme.group(2)} ${eslesme.group(3)}';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -776,14 +790,15 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
     bool saving = false;
 
     // Masaüstündeki plakaInput dinleyicisiyle aynı: yazılan plaka bilinen bir
-    // siparişteki plakayla TAM eşleşirse isim/TC otomatik dolduruluyor —
-    // aynı araç/sürücü birden fazla siparişte tekrar girilmesin diye.
+    // siparişteki plakayla TAM eşleşirse isim/TC otomatik dolduruluyor — "26
+    // BC 154" / "26bc154" / "26 bc 154" hepsi aynı plaka sayılır (boşluk ve
+    // büyük/küçük harf yok sayılarak karşılaştırılıyor).
     final suruculer = _bilinenSuruculer;
     plakaCtrl.addListener(() {
-      final deger = plakaCtrl.text.trim().toUpperCase();
+      final deger = _plakaNormalize(plakaCtrl.text);
       if (deger.isEmpty) return;
       for (final k in suruculer) {
-        if (k.plaka.toUpperCase() == deger) {
+        if (_plakaNormalize(k.plaka) == deger) {
           if (isimCtrl.text != k.isimSoyisim) isimCtrl.text = k.isimSoyisim;
           if (tcCtrl.text != k.tcNo) tcCtrl.text = k.tcNo;
           break;
@@ -817,16 +832,17 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
                       if (plakaCtrl.text.trim().isEmpty) return;
                       setDialogState(() => saving = true);
                       try {
+                        final plakaBicimli = _plakaFormatla(plakaCtrl.text.trim());
                         await widget.apiService.assignPlaka(
                           siparisId: s.id,
-                          plaka: plakaCtrl.text.trim(),
+                          plaka: plakaBicimli,
                           isimSoyisim: isimCtrl.text.trim(),
                           tcNo: tcCtrl.text.trim(),
                           cap: capCtrl.text.trim(),
                           yuklemeYeri: yuklemeYeriCtrl.text.trim(),
                         );
                         await _sendPlakaWhatsapp(
-                          plaka: plakaCtrl.text.trim(),
+                          plaka: plakaBicimli,
                           isimSoyisim: isimCtrl.text.trim(),
                           tcNo: tcCtrl.text.trim(),
                           cap: capCtrl.text.trim(),
