@@ -709,6 +709,7 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
     required String isimSoyisim,
     required String tcNo,
     required String cap,
+    String yuklemeYeri = '',
   }) async {
     final s = widget.siparis;
     if (plaka.isEmpty) return;
@@ -718,7 +719,8 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
         'Plaka: $plaka\n'
         'Ad Soyad: $isimSoyisim\n'
         'TC No: $tcNo\n'
-        'Çap: $cap';
+        'Çap: $cap'
+        '${yuklemeYeri.trim().isNotEmpty ? '\nYükleme Yeri: ${yuklemeYeri.trim()}' : ''}';
     final uri = Uri.parse('whatsapp://send?text=${Uri.encodeComponent(mesaj)}');
     try {
       final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -739,6 +741,7 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
     final isimCtrl = TextEditingController(text: s.isimSoyisim ?? '');
     final tcCtrl = TextEditingController(text: s.tcNo ?? '');
     final capCtrl = TextEditingController(text: s.cap ?? '');
+    final yuklemeYeriCtrl = TextEditingController(text: s.yuklemeYeri ?? '');
     bool saving = false;
 
     showDialog(
@@ -754,6 +757,7 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
                 TextField(controller: isimCtrl, decoration: const InputDecoration(labelText: 'İsim Soyisim')),
                 TextField(controller: tcCtrl, decoration: const InputDecoration(labelText: 'TC No'), keyboardType: TextInputType.number),
                 TextField(controller: capCtrl, decoration: const InputDecoration(labelText: 'Çap')),
+                TextField(controller: yuklemeYeriCtrl, decoration: const InputDecoration(labelText: 'Yükleme Yeri (isteğe bağlı)')),
               ],
             ),
           ),
@@ -772,12 +776,14 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
                           isimSoyisim: isimCtrl.text.trim(),
                           tcNo: tcCtrl.text.trim(),
                           cap: capCtrl.text.trim(),
+                          yuklemeYeri: yuklemeYeriCtrl.text.trim(),
                         );
                         await _sendPlakaWhatsapp(
                           plaka: plakaCtrl.text.trim(),
                           isimSoyisim: isimCtrl.text.trim(),
                           tcNo: tcCtrl.text.trim(),
                           cap: capCtrl.text.trim(),
+                          yuklemeYeri: yuklemeYeriCtrl.text.trim(),
                         );
                         if (ctx.mounted) Navigator.pop(ctx);
                         if (mounted) Navigator.pop(context);
@@ -836,6 +842,7 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
                   _detailChip('Sipariş Tarihi', widget.fmtTarih(s.siparisTarihi)),
                   _detailChip('Ödeme Tarihi', widget.fmtTarih(s.odemeTarihi)),
                   if (s.plakaAtanmis) _detailChip('Plaka', '${s.plaka} (${s.cap ?? '-'})'),
+                  if ((s.yuklemeYeri ?? '').trim().isNotEmpty) _detailChip('Yükleme Yeri', s.yuklemeYeri!),
                 ],
               ),
             ),
@@ -860,6 +867,7 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
                           isimSoyisim: s.isimSoyisim ?? '',
                           tcNo: s.tcNo ?? '',
                           cap: s.cap ?? '',
+                          yuklemeYeri: s.yuklemeYeri ?? '',
                         ),
                         style: OutlinedButton.styleFrom(foregroundColor: AppTheme.primaryEmerald, side: const BorderSide(color: AppTheme.primaryEmerald)),
                         icon: const Icon(Icons.share_rounded, size: 16),
