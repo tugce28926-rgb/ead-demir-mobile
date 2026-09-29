@@ -384,6 +384,7 @@ class ApiService {
     required String isimSoyisim,
     required String tcNo,
     required String cap,
+    String yuklemeYeri = '',
   }) async {
     syncUserHeader();
     final res = await _dio.post('demir-alislari/${Uri.encodeComponent(siparisId)}/plaka', data: {
@@ -391,6 +392,7 @@ class ApiService {
       'isimSoyisim': isimSoyisim,
       'tcNo': tcNo,
       'cap': cap,
+      'yuklemeYeri': yuklemeYeri,
     });
     if (res.data == null || res.data['ok'] != true) {
       throw Exception(res.data?['error'] ?? 'Plaka ataması yapılamadı.');
