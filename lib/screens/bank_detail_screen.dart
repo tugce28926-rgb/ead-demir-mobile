@@ -4,6 +4,7 @@ import '../core/theme.dart';
 import '../models/bank_model.dart';
 import '../services/api_service.dart';
 import 'bank_transaction_form_screen.dart';
+import 'fon_al_sat_screen.dart';
 
 class BankDetailScreen extends StatefulWidget {
   final BankAccount bank;
@@ -117,6 +118,40 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
                       _buildQuickAction('Gider', Icons.receipt_long_rounded, 'gider', AppTheme.primaryAmber),
                     ],
                   ),
+                  // Fon Alış/Satış — sadece KUVEYT/VAKIF banka çiftlerinde
+                  // desteklendiği için (bkz. resolveFonPair, app.js) sadece o
+                  // bankalarda gösteriliyor, diğerlerinde bu buton hiç çıkmıyor.
+                  if (bankSupportsFonAlSat(_currentBank.bankName)) ...[
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      width: double.infinity,
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => FonAlSatScreen(bank: _currentBank)),
+                          ).then((_) => _loadTransactions());
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.primaryPurple.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(Icons.pie_chart_rounded, size: 16, color: AppTheme.primaryPurple),
+                              SizedBox(width: 6),
+                              Text('Fon Alış / Satış', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.primaryPurple)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
 
                   // İŞLEM GEÇMİŞİ

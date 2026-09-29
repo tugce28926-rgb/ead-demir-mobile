@@ -405,14 +405,25 @@ class _DemirAlislariScreenState extends State<DemirAlislariScreen> {
   // Masaüstünden farklı olarak tutar SORULMAZ — sunucu kendisi hesaplayıp
   // yazıyor, mobil tarafta sadece onay alınıp "Öde" tetikleniyor.
   Future<void> _odeSiparisGrubuOnayla(_OdemeGrubu g) async {
+    // Ödeme tarihi henüz gelmediyse ("vadesi gelmedi") ekstra bir uyarı satırı ekleniyor.
+    final bugun = DateTime.now();
+    final odemeTarihi = _parseTarih(g.odemeTarihi);
+    final vadesiGelmedi = odemeTarihi != null &&
+        DateTime(odemeTarihi.year, odemeTarihi.month, odemeTarihi.day)
+            .isAfter(DateTime(bugun.year, bugun.month, bugun.day));
+
     final onay = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Ödeme Onayı', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
+        title: Text(vadesiGelmedi ? '⚠️ Vadesi Henüz Gelmedi' : 'Ödeme Onayı', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
         content: Text(
-          '${g.tedarikciAd} — ${_currency.format(g.toplamTutar)} tutarındaki '
-          '${g.siparisSayisi > 1 ? '${g.siparisSayisi} sipariş' : 'sipariş'} '
-          'ödendi olarak işaretlenecek. Bu işlem masaüstünde de görünür.',
+          (vadesiGelmedi
+                  ? 'Bu siparişin ödeme tarihi henüz gelmedi (${_fmtTarih(g.odemeTarihi)}). '
+                  : '') +
+              '${g.tedarikciAd} — ${_currency.format(g.toplamTutar)} tutarındaki '
+              '${g.siparisSayisi > 1 ? '${g.siparisSayisi} sipariş' : 'sipariş'} '
+              'ödendi olarak işaretlenecek. Bu işlem masaüstünde de görünür.'
+              '${vadesiGelmedi ? ' Emin misiniz?' : ''}',
           style: const TextStyle(fontSize: 12),
         ),
         actions: [
