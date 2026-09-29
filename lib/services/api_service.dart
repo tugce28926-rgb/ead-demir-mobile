@@ -367,6 +367,25 @@ class ApiService {
     await _dio.post('demir-alislari/${Uri.encodeComponent(siparisId)}/whatsapp-gonderildi', data: {'plaka': plaka});
   }
 
+  // Sipariş grubu ödeme — tutar mobilden gönderilmez, sunucu masaüstündeki
+  // tevkifat + orantılı dağıtım hesabını kendisi yapıp odendi/odenen_tutar'ı yazar.
+  Future<void> odeSiparisGrubu(List<String> ids) async {
+    syncUserHeader();
+    final res = await _dio.post('demir-alislari/siparis-ode', data: {'ids': ids});
+    if (res.data == null || res.data['ok'] != true) {
+      throw Exception(res.data?['error'] ?? 'Ödeme kaydedilemedi.');
+    }
+  }
+
+  // Nakliye ödeme — masaüstündeki gibi tutar girilmez, sadece nakliye_odendi işaretlenir.
+  Future<void> odeNakliye(String siparisId) async {
+    syncUserHeader();
+    final res = await _dio.post('demir-alislari/${Uri.encodeComponent(siparisId)}/nakliye-ode');
+    if (res.data == null || res.data['ok'] != true) {
+      throw Exception(res.data?['error'] ?? 'Nakliye ödemesi kaydedilemedi.');
+    }
+  }
+
   Future<bool> hideBank(String bankName) async {
     syncUserHeader();
     final res = await _dio.post('banks/${Uri.encodeComponent(bankName)}/hide', data: {'company': activeCompany});
