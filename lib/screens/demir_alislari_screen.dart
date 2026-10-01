@@ -727,6 +727,21 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
     return '${eslesme.group(1)} ${eslesme.group(2)} ${eslesme.group(3)}';
   }
 
+  // Dart'ın .toUpperCase()'i Türkçe'ye özgü i→İ/ı→I dönüşümünü doğru yapmıyor
+  // (ör. "izmir" → "İZMİR" değil "IZMIR" çıkar) — bu yüzden Türkçe karakterleri
+  // önce elle büyütüp sonra geri kalanı toUpperCase'e bırakıyoruz.
+  static String _turkceBuyukHarf(String s) {
+    return s
+        .replaceAll('i', 'İ')
+        .replaceAll('ı', 'I')
+        .replaceAll('ş', 'Ş')
+        .replaceAll('ğ', 'Ğ')
+        .replaceAll('ü', 'Ü')
+        .replaceAll('ö', 'Ö')
+        .replaceAll('ç', 'Ç')
+        .toUpperCase();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -759,8 +774,6 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
     final s = widget.siparis;
     if (plaka.isEmpty) return;
     final mesaj = 'Plaka Bilgisi Bildirimi\n\n'
-        'Tedarikçi: ${s.tedarikciAd}\n'
-        'Sipariş Tarihi: ${widget.fmtTarih(s.siparisTarihi)}\n\n'
         'Plaka: $plaka\n'
         'Ad Soyad: $isimSoyisim\n'
         'TC No: $tcNo\n'
@@ -792,18 +805,25 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
     // Masaüstündeki plakaInput dinleyicisiyle aynı: yazılan plaka bilinen bir
     // siparişteki plakayla TAM eşleşirse isim/TC otomatik dolduruluyor — "26
     // BC 154" / "26bc154" / "26 bc 154" hepsi aynı plaka sayılır (boşluk ve
-    // büyük/küçük harf yok sayılarak karşılaştırılıyor).
+    // büyük/küçük harf yok sayılarak karşılaştırılıyor). Eşleşme yoksa (plaka
+    // silindiyse ya da artık bilinmeyen bir plaka yazılıyorsa) isim/TC de
+    // temizlenir — eski plakanın bilgisi yanlışlıkla yeni/boş plakada kalmasın.
     final suruculer = _bilinenSuruculer;
     plakaCtrl.addListener(() {
       final deger = _plakaNormalize(plakaCtrl.text);
-      if (deger.isEmpty) return;
-      for (final k in suruculer) {
-        if (_plakaNormalize(k.plaka) == deger) {
-          if (isimCtrl.text != k.isimSoyisim) isimCtrl.text = k.isimSoyisim;
-          if (tcCtrl.text != k.tcNo) tcCtrl.text = k.tcNo;
-          break;
+      _BilinenSurucu? eslesen;
+      if (deger.isNotEmpty) {
+        for (final k in suruculer) {
+          if (_plakaNormalize(k.plaka) == deger) {
+            eslesen = k;
+            break;
+          }
         }
       }
+      final yeniIsim = eslesen?.isimSoyisim ?? '';
+      final yeniTc = eslesen?.tcNo ?? '';
+      if (isimCtrl.text != yeniIsim) isimCtrl.text = yeniIsim;
+      if (tcCtrl.text != yeniTc) tcCtrl.text = yeniTc;
     });
 
     showDialog(
@@ -833,20 +853,21 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
                       setDialogState(() => saving = true);
                       try {
                         final plakaBicimli = _plakaFormatla(plakaCtrl.text.trim());
+                        final yuklemeYeriBicimli = _turkceBuyukHarf(yuklemeYeriCtrl.text.trim());
                         await widget.apiService.assignPlaka(
                           siparisId: s.id,
                           plaka: plakaBicimli,
                           isimSoyisim: isimCtrl.text.trim(),
                           tcNo: tcCtrl.text.trim(),
                           cap: capCtrl.text.trim(),
-                          yuklemeYeri: yuklemeYeriCtrl.text.trim(),
+                          yuklemeYeri: yuklemeYeriBicimli,
                         );
                         await _sendPlakaWhatsapp(
                           plaka: plakaBicimli,
                           isimSoyisim: isimCtrl.text.trim(),
                           tcNo: tcCtrl.text.trim(),
                           cap: capCtrl.text.trim(),
-                          yuklemeYeri: yuklemeYeriCtrl.text.trim(),
+                          yuklemeYeri: yuklemeYeriBicimli,
                         );
                         if (ctx.mounted) Navigator.pop(ctx);
                         if (mounted) Navigator.pop(context);
