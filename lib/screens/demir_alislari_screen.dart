@@ -727,6 +727,21 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
     return '${eslesme.group(1)} ${eslesme.group(2)} ${eslesme.group(3)}';
   }
 
+  // "26 VL 507" gibi boşluklu bir plakada, normalize edilmiş (boşluksuz)
+  // karşılaştırmada ilk `normalizedUzunluk` karakter tüketildikten HEMEN
+  // SONRAKİ orijinal (boşluklu) index'i bulur — otomatik tamamlamada yazılan
+  // kısmın üstüne denk gelen bölümü atlayıp kalanını seçili bırakmak için.
+  static int _asilPlakaIndexi(String asilPlaka, int normalizedUzunluk) {
+    var sayilan = 0;
+    for (var i = 0; i < asilPlaka.length; i++) {
+      if (asilPlaka[i].trim().isNotEmpty) {
+        sayilan++;
+        if (sayilan == normalizedUzunluk) return i + 1;
+      }
+    }
+    return asilPlaka.length;
+  }
+
   // Dart'ın .toUpperCase()'i Türkçe'ye özgü i→İ/ı→I dönüşümünü doğru yapmıyor
   // (ör. "izmir" → "İZMİR" değil "IZMIR" çıkar) — bu yüzden Türkçe karakterleri
   // önce elle büyütüp sonra geri kalanı toUpperCase'e bırakıyoruz.
@@ -802,19 +817,49 @@ class _SiparisDetailSheetState extends State<_SiparisDetailSheet> {
     final yuklemeYeriCtrl = TextEditingController(text: s.yuklemeYeri ?? '');
     bool saving = false;
 
-    // Masaüstündeki plakaInput dinleyicisiyle aynı: yazılan plaka bilinen bir
-    // siparişteki plakayla TAM eşleşirse isim/TC otomatik dolduruluyor — "26
-    // BC 154" / "26bc154" / "26 bc 154" hepsi aynı plaka sayılır (boşluk ve
-    // büyük/küçük harf yok sayılarak karşılaştırılıyor). Eşleşme yoksa (plaka
-    // silindiyse ya da artık bilinmeyen bir plaka yazılıyorsa) isim/TC de
-    // temizlenir — eski plakanın bilgisi yanlışlıkla yeni/boş plakada kalmasın.
+    // Masaüstündeki plakaInput dinleyicisiyle aynı iki davranış:
+    // 1) Yazdıkça, bilinen bir plakanın BAŞLANGICI ile eşleşiyorsa ("26vl5" ->
+    //    "26 VL 507") geri kalanı otomatik tamamlanır ve seçili bırakılır —
+    //    devam yazarsan üzerine yazılır, dokunmazsan öylece kalır.
+    // 2) TAM eşleşme varsa isim/TC otomatik dolar; eşleşme yoksa (silme
+    //    sırasında ya da artık bilinmeyen bir plaka yazılırken) temizlenir.
+    // Boşluk/büyük-küçük harf farkı yok sayılarak karşılaştırılıyor.
     final suruculer = _bilinenSuruculer;
+    bool otoDoldurma = false;
+    String oncekiMetin = plakaCtrl.text;
     plakaCtrl.addListener(() {
-      final deger = _plakaNormalize(plakaCtrl.text);
-      _BilinenSurucu? eslesen;
-      if (deger.isNotEmpty) {
+      if (otoDoldurma) {
+        otoDoldurma = false;
+        return;
+      }
+      final mevcutMetin = plakaCtrl.text;
+      final silindi = mevcutMetin.length < oncekiMetin.length;
+      oncekiMetin = mevcutMetin;
+
+      final normDeger = _plakaNormalize(mevcutMetin);
+
+      if (!silindi && normDeger.isNotEmpty) {
         for (final k in suruculer) {
-          if (_plakaNormalize(k.plaka) == deger) {
+          final normK = _plakaNormalize(k.plaka);
+          if (normK.length > normDeger.length && normK.startsWith(normDeger)) {
+            final baslangic = _asilPlakaIndexi(k.plaka, normDeger.length);
+            otoDoldurma = true;
+            oncekiMetin = k.plaka;
+            plakaCtrl.value = TextEditingValue(
+              text: k.plaka,
+              selection: TextSelection(baseOffset: baslangic, extentOffset: k.plaka.length),
+            );
+            isimCtrl.text = k.isimSoyisim;
+            tcCtrl.text = k.tcNo;
+            return;
+          }
+        }
+      }
+
+      _BilinenSurucu? eslesen;
+      if (normDeger.isNotEmpty) {
+        for (final k in suruculer) {
+          if (_plakaNormalize(k.plaka) == normDeger) {
             eslesen = k;
             break;
           }
